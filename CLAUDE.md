@@ -215,7 +215,9 @@ Phase B: 知识库增强 (未来扩展，§11)
 | **生成 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-script-generation/SKILL.md` | ✅ 针对路飞场景定制（情境再现型 + 攻击式开场 + 教育型反转），含视频/图文双骨架 + 路飞 vol.14 完整 few-shot |
 | **选题 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-topic-selection/SKILL.md` | ✅ 三维度评分（博主匹配 0.4 + 热度 0.4 + 可执行 0.2）+ 路飞 4 个已评分候选选题 + 反爆款选题信号 |
 | **`run_skill.py` 调用脚本** | `./xhs-content-pipeline/run_skill.py` | ✅ 单次原子调用任意 SKILL，接 FreeModel API，不依赖 Hermes |
-| 依赖清单 | `./xhs-content-pipeline/requirements.txt` | ✅ openai + python-dotenv |
+| **`whisper_transcribe.py` 转写脚本** | `./xhs-content-pipeline/whisper_transcribe.py` | ✅ 本地 faster-whisper 音视频转写（plain/srt/json 输出），不依赖 Hermes 不依赖 API |
+| 依赖清单（核心） | `./xhs-content-pipeline/requirements.txt` | ✅ openai + python-dotenv |
+| 依赖清单（转写可选） | `./xhs-content-pipeline/requirements-transcribe.txt` | ✅ faster-whisper |
 | API 配置模板 | `./xhs-content-pipeline/.env.example` | ✅ FreeModel 双格式配置示例 |
 | 项目导览 | `./xhs-content-pipeline/README.md` | ✅ 含 run_skill.py 使用说明 |
 | 本文件 | `./CLAUDE.md` | ✅ |
@@ -478,7 +480,8 @@ result = agent.chat(f"""
 | 4.0a | **`run_skill.py` 单次调用 CLI**（FreeModel 直连，不依赖 Hermes） | ✅ 完成 | - | - |
 | 4.0b | 安装 Hermes，跑通 hello world | ⏸ | 用户 | Phase 2-3 跑通 + 至少一次爆款数据回看 |
 | 4.1 | Plugin 骨架（plugin.yaml + `__init__.py`） | ⏸ | Claude | 4.0b |
-| 4.2 | Tool: `whisper_transcribe`（音频转写） | ⏸ | Claude | 4.1 |
+| 4.2a | **`whisper_transcribe.py` 单次转写 CLI**（faster-whisper 本地） | ✅ 完成 | - | - |
+| 4.2b | Tool: `whisper_transcribe`（包成 Hermes tool） | ⏸ | Claude | 4.1 |
 | 4.3 | Tool: `analyze`（把 run_skill.py 包成 Hermes tool） | ⏸ | Claude | 4.1 |
 | 4.4 | Tool: `huitun_collector`（灰豚 Playwright） | ⏸ | Claude | 4.1 + 用户准备灰豚账号 |
 | 4.5 | Tool: `xhs_video_downloader`（研究小号下视频） | ⏸ | Claude | 4.1 + 用户准备研究小号 |

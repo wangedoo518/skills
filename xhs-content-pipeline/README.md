@@ -10,6 +10,7 @@
 | **生成 SKILL** (`xhs-script-generation` v0.1) | ✅ 已落地，视频/图文双骨架 + 8 条反爆款保护 |
 | **选题 SKILL** (`xhs-topic-selection` v0.1) | ✅ 已落地，三维评分推荐 |
 | **`run_skill.py` 调用脚本** | ✅ 已落地，接 FreeModel API |
+| **`whisper_transcribe.py` 转写脚本** | ✅ 已落地，本地 faster-whisper |
 | **Hermes Plugin 集成** | ⏸ 待 Phase 4 |
 | **复盘 SKILL** | ⏸ 待 Phase 6（需要发布后真实数据） |
 
@@ -21,6 +22,8 @@ xhs-content-pipeline/
 ├── .env.example                           ← 复制为 .env 后填 API key
 ├── requirements.txt                       ← Python 依赖
 ├── run_skill.py                           ← ✅ CLI: 用 FreeModel 跑任意 SKILL
+├── whisper_transcribe.py                  ← ✅ CLI: faster-whisper 本地音视频转写
+├── requirements-transcribe.txt            ← ✅ 转写脚本的可选依赖
 ├── skills/
 │   ├── xhs-viral-analysis/SKILL.md       ← 拆解 v0.2
 │   ├── xhs-script-generation/SKILL.md    ← 生成 v0.1
@@ -85,6 +88,40 @@ python run_skill.py script-generation -i /tmp/vol14_input.md -o /tmp/vol14稿.md
 
 ```bash
 python run_skill.py viral-analysis -i transcript.txt --show-usage
+```
+
+### 5. 本地转写音视频（可选）
+
+如果你有视频/音频文件需要转逐字稿（不用小红书"点点"），用 `whisper_transcribe.py`：
+
+```bash
+# 装可选依赖（faster-whisper + ctranslate2，首次会下载模型）
+pip install -r requirements-transcribe.txt
+
+# 转一条视频，输出纯文本逐字稿
+python whisper_transcribe.py 路飞_vol13.mp4 -o transcript.txt
+
+# 输出带时间戳的 SRT
+python whisper_transcribe.py video.mp4 -f srt -o subs.srt
+
+# 用大模型（更准但慢，推荐做正式素材分析）
+python whisper_transcribe.py video.mp4 --model large-v3 --language zh -o transcript.txt
+```
+
+模型尺寸对照：
+
+| 模型 | 大小 | 速度 | 中文短视频准确度 |
+|------|------|------|--------|
+| tiny | 39M | 最快 | 听个大概 |
+| small | 244M | 快 | 可用 |
+| **medium** (默认) | 769M | 中 | 推荐 |
+| large-v3 | 1.5G | 慢 | 最佳 |
+
+转出来的逐字稿可以直接喂给 `run_skill.py viral-analysis` 拆解：
+
+```bash
+python whisper_transcribe.py video.mp4 -o transcript.txt
+python run_skill.py viral-analysis -i transcript.txt -o report.md
 ```
 
 ## 三个 SKILL 之间的协作（Agent-first 视角）
