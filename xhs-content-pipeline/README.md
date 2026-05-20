@@ -1,91 +1,134 @@
-# 小红书内容生产链路 (xhs-content-pipeline)
+# 小红书爆款内容生产链路 (xhs-content-pipeline)
 
-基于 Hermes Agent 搭建的小红书短视频内容生产工作链路。
+针对设计师职业发展 + 大厂求职垂类调优的 AI 辅助内容生产工具链。
 
-## 当前阶段
+## 当前状态
 
-📍 **Stage 1：SKILL 设计阶段** — 已完成 `xhs-viral-analysis`（爆款拆解）
-
-下一步规划：
-- [ ] Stage 2：手动验证 SKILL 的拆解质量（**当前推荐做的**）
-- [ ] Stage 3：写 `xhs-script-generation` SKILL（逐字稿生成）
-- [ ] Stage 4：安装 Hermes，搭 Plugin 骨架
-- [ ] Stage 5：实现 `whisper_transcribe` 工具（音频→逐字稿）
-- [ ] Stage 6：实现 `analyze_viral_content` 工具（包装 SKILL 调用）
-- [ ] Stage 7：实现 `generate_my_script` 工具（多模型并行）
-- [ ] Stage 8：注册 CLI 命令 `hermes xhs run --input ...`，串成 workflow
+| 模块 | 状态 |
+|------|------|
+| **拆解 SKILL** (`xhs-viral-analysis` v0.2) | ✅ 已落地，五维框架（钩子/框架/爆点/情绪/阈值） |
+| **生成 SKILL** (`xhs-script-generation` v0.1) | ✅ 已落地，视频/图文双骨架 + 8 条反爆款保护 |
+| **选题 SKILL** (`xhs-topic-selection` v0.1) | ✅ 已落地，三维评分推荐 |
+| **`run_skill.py` 调用脚本** | ✅ 已落地，接 FreeModel API |
+| **Hermes Plugin 集成** | ⏸ 待 Phase 4 |
+| **复盘 SKILL** | ⏸ 待 Phase 6（需要发布后真实数据） |
 
 ## 目录结构
 
 ```
 xhs-content-pipeline/
-├── README.md                   ← 你正在看的文件
-├── plugin.yaml                 ← (待创建) Hermes 插件清单
-├── __init__.py                 ← (待创建) 插件入口
+├── README.md                              ← 本文件
+├── .env.example                           ← 复制为 .env 后填 API key
+├── requirements.txt                       ← Python 依赖
+├── run_skill.py                           ← ✅ CLI: 用 FreeModel 跑任意 SKILL
 ├── skills/
-│   └── xhs-viral-analysis/
-│       └── SKILL.md            ← ✅ 已完成
-└── tools/                      ← (待创建)
-    ├── transcribe.py           ← Whisper 转写
-    ├── analyze.py              ← 拆解工具
-    └── generate.py             ← 多模型生成
+│   ├── xhs-viral-analysis/SKILL.md       ← 拆解 v0.2
+│   ├── xhs-script-generation/SKILL.md    ← 生成 v0.1
+│   └── xhs-topic-selection/SKILL.md      ← 选题 v0.1
+├── plugin.yaml                            ← (Phase 4 待建) Hermes 插件清单
+└── tools/                                 ← (Phase 4-5 待建)
+    ├── transcribe.py                      ← Whisper 转写
+    ├── analyze.py                         ← analyze SKILL 调用 wrapper
+    └── generate.py                        ← 多模型并行生成
 ```
 
-## 如何在 Hermes 装好之前就用 SKILL
+## 快速开始
 
-**SKILL 本质是结构化提示词**，完全可以脱离 Hermes 单独验证：
+### 1. 安装依赖
 
-### 方式 A：直接复制到 ChatGPT/Claude/DeepSeek 网页
-
-1. 打开 `skills/xhs-viral-analysis/SKILL.md`
-2. 复制**从 `# 小红书爆款拆解` 开始到末尾**的全部内容
-3. 粘贴到对话开头
-4. 粘贴一份小红书逐字稿
-5. 观察输出是否符合预期
-
-### 方式 B：通过 API 验证（推荐用 Python 脚本）
-
-如果你有 OpenAI/Claude/DeepSeek 的 API key，可以写个小脚本：
-
-```python
-import openai  # 或 anthropic
-client = openai.OpenAI(api_key="sk-...")
-
-with open("skills/xhs-viral-analysis/SKILL.md", encoding="utf-8") as f:
-    skill = f.read()
-
-transcript = """
-我不允许还有人不知道这个 19 块钱的神器...
-[把你要拆解的逐字稿放这里]
-"""
-
-response = client.chat.completions.create(
-    model="deepseek-chat",  # 或 gpt-4o, claude-opus
-    messages=[
-        {"role": "system", "content": skill},
-        {"role": "user", "content": f"请拆解这条逐字稿：\n\n{transcript}"}
-    ]
-)
-print(response.choices[0].message.content)
+```bash
+pip install -r requirements.txt
 ```
 
-### 验证 checklist
+### 2. 配置 API key
 
-测试 3-5 条不同质量的逐字稿（你已经知道哪条爆、哪条没爆），看 SKILL 是否：
+```bash
+cp .env.example .env
+# 编辑 .env 填入 FREEMODEL_API_KEY
+```
+
+或直接设环境变量：
+```bash
+export FREEMODEL_API_KEY=sk-your-key-here
+```
+
+### 3. 跑 SKILL
+
+#### 拆解一条爆款逐字稿
+
+```bash
+# 准备输入文件
+cat > /tmp/transcript.txt <<EOF
+（粘贴某条小红书视频的逐字稿、标题、互动数据）
+EOF
+
+# 拆解
+python run_skill.py viral-analysis -i /tmp/transcript.txt -o /tmp/report.md
+```
+
+#### 选题推荐
+
+```bash
+# 输入: 博主画像 + 拆解报告
+python run_skill.py topic-selection -i /tmp/路飞_input.md -o /tmp/选题.md
+```
+
+#### 生成逐字稿
+
+```bash
+python run_skill.py script-generation -i /tmp/vol14_input.md -o /tmp/vol14稿.md
+```
+
+### 4. 查看 token 用量
+
+加 `--show-usage` 显示 token 消耗：
+
+```bash
+python run_skill.py viral-analysis -i transcript.txt --show-usage
+```
+
+## 三个 SKILL 之间的协作（Agent-first 视角）
+
+按 ADR-015，工作流不是 pipeline 而是 agent 自主决策：
+
+```
+Goal: 给路飞下条爆款逐字稿
+      ↓
+  Agent 自主决策：
+      ↓
+  1. 调 topic-selection 出 3-5 候选 → 用户/路飞选一个
+  2. 调 viral-analysis 拆参考爆款（如果上下文还没有）
+  3. 调 script-generation 写稿
+  4. 调 viral-analysis 自评刚生成的稿
+  5. 如果自评 < 7 分，回到第 3 步迭代
+```
+
+当前 `run_skill.py` 是 Phase 4 之前的"单次调用"接口。Phase 4 接 Hermes 后，agent 会自动完成上面的决策。
+
+## 备选用法：直接复制到 Claude / ChatGPT 网页
+
+如果你不想配 API，也可以：
+
+1. 打开任意一个 `skills/*/SKILL.md` 文件
+2. 复制从 `# 标题` 开始到末尾的所有内容
+3. 粘贴到 Claude/ChatGPT/DeepSeek 网页的对话开头
+4. 给它一份输入数据
+5. 看输出
+
+## SKILL 质量验证 checklist
+
+每次 SKILL 调优后用这个 checklist 自测：
 
 - [ ] 钩子评分跟你的直觉一致（差距 ≤ 2 分）
 - [ ] 爆点定位准确（找出来的句子确实是你认为爆的那句）
 - [ ] 可复刻清单可操作（不是 "写好钩子" 这种废话）
-- [ ] 不会美化低质量样本（如果给一条普通视频，它会如实给低分）
+- [ ] 不会美化低质量样本（低质量给低分）
 - [ ] 严格 cite 原文（不会臆测）
+- [ ] 路飞场景的反爆款信号（"X 次觉醒"、"宝宝姐妹"等）能被识别为反例
 
-如果某项不达标，回去改 `SKILL.md` 对应章节，重新测。
+## SKILL 迭代优先级（按改动收益从高到低）
 
-## 迭代建议
-
-测出来差距后，**优先迭代以下部分**（按改动收益从高到低）：
-
-1. **`几个对照例子（few-shot）`** — 这是 LLM 最依赖的部分。把你测出来的 3-5 个真实案例（高/中/低分各一个）的拆解结果整理进去，下一轮分析质量会立刻提升一个台阶。
-2. **`领域知识：赛道特异性`** — 你做哪个赛道，就把那个赛道的特征模式补充清楚。
-3. **`行为约束`** — 如果你发现 LLM 经常犯某个错（比如美化分析），就加一条约束。
-4. **维度/评分** — 如果发现某个维度区分度低（高分低分都打这个分），考虑删掉或合并。
+1. **`几个对照例子（few-shot）`** —— LLM 最依赖的部分。补真实拆过的高/中/低案例
+2. **`赛道特异性`** —— 针对你的垂类补差异化规则
+3. **`行为约束`** —— LLM 经常犯的错就加约束
+4. **维度/评分公式** —— 区分度低的维度可考虑删/合

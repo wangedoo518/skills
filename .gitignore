@@ -2,11 +2,14 @@
 hermes-agent-main/
 hermes-agent/
 
-# 客户素材（敏感，不入库）
-*.txt
+# 客户素材目录（敏感，不入库）—— 注意只屏蔽目录不屏蔽 *.txt，否则会误伤 requirements.txt
 videos/
 transcripts/
 raw/
+inputs/
+outputs/
+reports/
+tests/transcripts/
 
 # Claude / agent 本地状态
 .claude/
@@ -23,6 +26,11 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# API 密钥（关键！不能进库）
+.env
+.env.local
+*.key
 
 # Python（未来工程化阶段会有）
 __pycache__/
