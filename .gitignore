@@ -1,0 +1,42 @@
+# Hermes Agent 第三方源码（参考用，不入库）
+hermes-agent-main/
+hermes-agent/
+
+# 客户素材（敏感，不入库）
+*.txt
+videos/
+transcripts/
+raw/
+
+# Claude / agent 本地状态
+.claude/
+.claude*/
+
+# 操作系统垃圾
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python（未来工程化阶段会有）
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node（未来如有 web UI）
+node_modules/
+
+# 临时文件
+*.tmp
+*.bak
+*.log
