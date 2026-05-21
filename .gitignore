@@ -48,6 +48,8 @@ outputs/
 # 一次性探索脚本（开发期工具，已完成使命，不入库）
 **/explore_huitun_*.py
 **/explore_dump_rows.py
+**/explore_qr_*.py
+**/explore_*.py
 
 # Python（未来工程化阶段会有）
 __pycache__/
