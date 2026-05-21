@@ -245,7 +245,9 @@ def _parse_count(text):
         return 0
 
 
-NOTE_SEARCH_URL = "https://xhs.huitun.com/#/note/note_search"
+NOTE_SEARCH_URL = "https://xhs.huitun.com/#/note/note_search"  # 品类搜索 (A 来源)
+NOTE_LIST_URL = "https://xhs.huitun.com/#/note/note_list"      # 笔记榜单 / 热门头部 (B 来源)
+COLLECT_URL = "https://xhs.huitun.com/#/collect"               # 我的收藏 (C 来源)
 
 
 def _enter_note_search_page(page):
@@ -535,6 +537,100 @@ def _search_one_keyword(page, keyword: str, date_range: str, max_per_keyword: in
     return notes
 
 
+def _collect_from_url(args, page_url: str, source_label: str):
+    """通用采集：goto URL → 等列表 → 抓数据 → resolve 真 URL。
+
+    适用于「笔记榜单」「我的收藏」等不需要关键词搜索的列表页。
+    """
+    sync_playwright = _require_playwright()
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    all_notes = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=args.headless)
+        context = browser.new_context(storage_state=str(SESSION_FILE))
+        page = context.new_page()
+
+        sys.stderr.write(f"→ 导航到 {page_url}\n")
+        page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
+        time.sleep(7)
+        sys.stderr.write(f"→ 落地 URL: {page.url} | title: {page.title()}\n")
+
+        try:
+            page.wait_for_selector("tr.ant-table-row", timeout=15000)
+            time.sleep(2)
+        except Exception as e:
+            sys.stderr.write(f"⚠ 没找到笔记列表: {e}\n")
+            browser.close()
+            sys.exit(1)
+
+        # 抓笔记
+        notes = _extract_notes_from_page(page)
+        sys.stderr.write(f"  ← 抓到 {len(notes)} 条\n")
+        notes = notes[: args.top]
+
+        # 解析真小红书 URL
+        sys.stderr.write(f"  → 解析真小红书 URL ({len(notes)} 条, 约 +{len(notes)*3}s) ...\n")
+        for i, n in enumerate(notes):
+            real_url, hex_id = _resolve_real_xhs_url_by_index(context, page, i)
+            if real_url and hex_id:
+                n["url"] = f"https://www.xiaohongshu.com/explore/{hex_id}"
+                n["xhs_note_id"] = hex_id
+                n["raw_xhs_url"] = real_url
+                n["huitun_note_id"] = n["note_id"]
+                n["note_id"] = hex_id
+            else:
+                n["url"] = None
+                n["xhs_note_id"] = None
+                n["huitun_note_id"] = n["note_id"]
+            time.sleep(random.uniform(0.5, 1.5))
+
+        all_notes = notes
+        browser.close()
+
+    # 去重
+    seen = set()
+    deduped = []
+    for n in all_notes:
+        k = n.get("row_key") or n.get("note_id")
+        if k and k not in seen:
+            seen.add(k)
+            deduped.append(n)
+
+    output = {
+        "collected_at": datetime.now(timezone.utc).isoformat(),
+        "source": "huitun",
+        "query": {
+            "source_label": source_label,  # "hot" / "collect"
+            "page_url": page_url,
+            "top_n": args.top,
+        },
+        "stats": {
+            "total_raw": len(all_notes),
+            "after_dedup": len(deduped),
+            "final": len(deduped[: args.top]),
+        },
+        "notes": deduped[: args.top],
+    }
+    output_path.write_text(
+        json.dumps(output, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    sys.stderr.write(f"\n✓ 已保存 {len(output['notes'])} 条到 {output_path}\n")
+
+
+def cmd_hot(args):
+    """B 来源：从灰豚「笔记榜单」抓热点头部笔记（不带关键词）。"""
+    _collect_from_url(args, NOTE_LIST_URL, "hot")
+
+
+def cmd_collect_list(args):
+    """C 来源：从灰豚「我的收藏」抓手动收藏的笔记。"""
+    _collect_from_url(args, COLLECT_URL, "collect")
+
+
 def cmd_search(args):
     """主采集流程：登录态加载 → 按关键词搜索 → 抓列表 → 输出 JSON。"""
     if not SESSION_FILE.exists():
@@ -660,7 +756,20 @@ def main():
 
     sub.add_parser("explore", help="交互式探索灰豚 UI（开发用，定 selector）")
 
-    p_search = sub.add_parser("search", help="采集爆款笔记")
+    # B 来源：热点头部 = 笔记榜单
+    p_hot = sub.add_parser("hot", help="B 来源: 抓笔记榜单（不限品类，全网热点头部）")
+    p_hot.add_argument("--top", type=int, default=30, help="采集 top N（默认 30）")
+    p_hot.add_argument("--output", "-o", type=str, required=True, help="输出 JSON 路径")
+    p_hot.add_argument("--headless", action="store_true")
+
+    # C 来源：我的收藏
+    p_coll = sub.add_parser("my_collect", help="C 来源: 抓灰豚「我的收藏」（用户手动收藏的笔记）")
+    p_coll.add_argument("--top", type=int, default=50, help="采集 top N（默认 50）")
+    p_coll.add_argument("--output", "-o", type=str, required=True, help="输出 JSON 路径")
+    p_coll.add_argument("--headless", action="store_true")
+
+    # A 来源：品类关键词搜索
+    p_search = sub.add_parser("search", help="A 来源: 按品类关键词搜索爆款笔记")
     p_search.add_argument(
         "--niche",
         type=str,
@@ -699,6 +808,10 @@ def main():
         cmd_explore()
     elif args.cmd == "search":
         cmd_search(args)
+    elif args.cmd == "hot":
+        cmd_hot(args)
+    elif args.cmd == "my_collect":
+        cmd_collect_list(args)
 
 
 if __name__ == "__main__":
