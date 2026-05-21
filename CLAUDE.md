@@ -483,7 +483,9 @@ result = agent.chat(f"""
 | 4.2a | **`whisper_transcribe.py` 单次转写 CLI**（faster-whisper 本地） | ✅ 完成 | - | - |
 | 4.2b | Tool: `whisper_transcribe`（包成 Hermes tool） | ⏸ | Claude | 4.1 |
 | 4.3 | Tool: `analyze`（把 run_skill.py 包成 Hermes tool） | ⏸ | Claude | 4.1 |
-| 4.4 | Tool: `huitun_collector`（灰豚 Playwright） | ⏸ | Claude | 4.1 + 用户准备灰豚账号 |
+| 4.4a | **`huitun_collect.py` 采集 CLI 骨架**（login + explore + search 三命令，selector 待填） | 🟡 进行中 | Claude | - |
+| 4.4b | explore 灰豚 UI + 填实 search selector | ⏸ 阻塞 | Claude（用户给 cookie 后） | 4.4a + 用户跑 login 保存 session |
+| 4.4c | Tool: `huitun_collector`（包成 Hermes tool） | ⏸ | Claude | 4.1 + 4.4b |
 | 4.5 | Tool: `xhs_video_downloader`（研究小号下视频） | ⏸ | Claude | 4.1 + 用户准备研究小号 |
 
 ### Phase 5: 多模型生成 + CLI 串联

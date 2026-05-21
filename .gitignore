@@ -32,6 +32,11 @@ desktop.ini
 .env.local
 *.key
 
+# 灰豚登录态（包含 cookie，绝不能进库）
+*session*.json
+*storage_state*.json
+huitun_session*.json
+
 # Python（未来工程化阶段会有）
 __pycache__/
 *.pyc

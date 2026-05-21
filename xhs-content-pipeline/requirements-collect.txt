@@ -1,0 +1,6 @@
+# 独立可选依赖：灰豚数据采集
+# 安装：
+#   pip install -r requirements-collect.txt
+#   playwright install chromium
+
+playwright>=1.40.0,<2.0.0

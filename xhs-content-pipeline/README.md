@@ -11,6 +11,7 @@
 | **选题 SKILL** (`xhs-topic-selection` v0.1) | ✅ 已落地，三维评分推荐 |
 | **`run_skill.py` 调用脚本** | ✅ 已落地，接 FreeModel API |
 | **`whisper_transcribe.py` 转写脚本** | ✅ 已落地，本地 faster-whisper |
+| **`huitun_collect.py` 灰豚采集脚本** | 🟡 骨架已落地（login + explore + search 三命令），search 的 selector 待 explore 阶段填实 |
 | **Hermes Plugin 集成** | ⏸ 待 Phase 4 |
 | **复盘 SKILL** | ⏸ 待 Phase 6（需要发布后真实数据） |
 
@@ -24,6 +25,8 @@ xhs-content-pipeline/
 ├── run_skill.py                           ← ✅ CLI: 用 FreeModel 跑任意 SKILL
 ├── whisper_transcribe.py                  ← ✅ CLI: faster-whisper 本地音视频转写
 ├── requirements-transcribe.txt            ← ✅ 转写脚本的可选依赖
+├── huitun_collect.py                      ← 🟡 CLI: 灰豚 Playwright 采集（骨架就绪，selector 待 explore）
+├── requirements-collect.txt               ← ✅ 采集脚本的可选依赖（playwright）
 ├── skills/
 │   ├── xhs-viral-analysis/SKILL.md       ← 拆解 v0.2
 │   ├── xhs-script-generation/SKILL.md    ← 生成 v0.1
