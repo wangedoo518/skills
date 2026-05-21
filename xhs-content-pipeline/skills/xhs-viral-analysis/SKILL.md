@@ -1,7 +1,7 @@
 ---
 name: xhs-viral-analysis
-description: "拆解小红书爆款笔记（视频/图文），输出钩子/框架/爆点/情绪曲线四维分析。v0.2 针对设计师职业发展+大厂求职垂类调优，加入沉浸式钩子、情境再现框架、图文笔记适配、量化爆款阈值。输入逐字稿/正文+互动数据即触发。"
-version: 0.2.0
+description: "拆解小红书爆款笔记（视频/图文），输出钩子/框架/爆点/情绪曲线四维分析。v0.2.1 针对设计师职业发展+大厂求职垂类调优，加入沉浸式钩子、情境再现框架、图文笔记适配、量化爆款阈值，并明确支持 xhs_extract_note 生成的 note.md / image_ocr_by_page 输入。"
+version: 0.2.1
 author: user
 license: MIT
 platforms: [linux, macos, windows]
@@ -10,6 +10,7 @@ metadata:
     tags: [xiaohongshu, content-analysis, viral, video, script-writing, design-career]
     related_skills: [xhs-script-generation]
     changelog:
+      v0.2.1: "明确支持 xhs_extract_note 输出的 note.md / image_ocr_by_page，把图文笔记的标题、正文、逐图 OCR 文案作为拆解输入"
       v0.2.0: "基于路飞 3 条作品 + 2 条对照组的 Phase 1.1 拆解发现，加入沉浸式体验型钩子（第 7 种）、情境再现型框架、说教式设问开场反爆款信号、攻击式/方法论两条 few-shot、图文笔记专属维度、设计/职场赛道特异性、量化爆款阈值矩阵、系列复利效应"
       v0.1.0: "首版，四维分析框架"
 ---
@@ -18,13 +19,14 @@ metadata:
 
 ## 何时使用本 SKILL
 
-当用户给你一份小红书短视频的**逐字稿**（通常 200-800 字），并要求：
+当用户给你一份小红书短视频的**逐字稿**（通常 200-800 字），或一份由 `xhs_extract_note` 生成的小红书图文笔记 `note.md`，并要求：
 - "拆解一下这条爆款"
 - "分析为什么这条火了"
 - "帮我学习这个博主的逻辑"
 - "这条视频好在哪"
 
 **不要在以下情况使用**：
+- 用户只给小红书图文链接、没给正文/OCR → 先调 `xhs_extract_note` 工具生成 `note.md`
 - 用户只给视频链接没给逐字稿 → 先调 `whisper_transcribe` 工具
 - 用户要写新稿子 → 改用 `xhs-script-generation` SKILL
 - 逐字稿少于 50 字（信息不足）→ 提醒用户补充
@@ -33,13 +35,21 @@ metadata:
 ## 输入契约
 
 **必填**：
-- `transcript`: 逐字稿全文（纯文本，不带时间戳）
+- `transcript`: 逐字稿全文（纯文本，不带时间戳）；或
+- `note_markdown`: `xhs_extract_note` 生成的 `note.md` 全文，适用于图文笔记
 
 **可选**（有就用、没有就推断）：
+- `image_ocr_by_page`: 图文笔记逐图 OCR 文案。推荐格式为 `{image_index, ocr_text, local_path}` 列表；如果已经包含在 `note_markdown` 的 `## Image OCR` 章节中，可不单独传
 - `duration_seconds`: 视频总时长（用于估算每段秒数）
 - `likes` / `collects` / `comments`: 互动数据（用于校准爆款等级）
 - `niche`: 赛道（穿搭/美食/职场/母婴/美妆/家居/...）
 - `creator_persona`: 博主人设（用于识别不可复刻部分）
+
+**图文笔记输入规范**：
+- 把 `note_markdown` 中的标题、`## Body` 正文、`## Image OCR` 逐图文字合并为分析文本
+- 引用原文时必须保留来源位置，例如 `正文` / `图 1 OCR` / `图 3 OCR`
+- 如果正文为空但图片 OCR 有内容，仍可按类型 C 图文工具型分析
+- 如果 OCR 缺失，明确标注"图中文字缺失，封面价值密度判断不完整"，不要臆测图片内容
 
 ## 分析框架（五维）
 
