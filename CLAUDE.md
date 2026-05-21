@@ -41,7 +41,7 @@ AI 拆解竞品爆款          →   用户基于 AI 稿真人录制     →    
 
 为路飞产出**至少 1 条达到爆款阈值的发布内容**（阈值见 §3）。这是"用效果买单"的可验证交付，不是"做一套方法论"。
 
-### 2.1.2 商业模式（来自老板对话，ADR-012）
+### 2.1.2 商业模式（详见 ADR-012）
 
 **定制 SKILL + 效果买单**：
 - 不同客户配不同 SKILL（赛道、风格、内容形态差异）
@@ -49,7 +49,7 @@ AI 拆解竞品爆款          →   用户基于 AI 稿真人录制     →    
 - 路飞是第一个签约客户、也是第一个验证场
 - 跨客户的 SKILL 库 / 多租户平台化 → 仍在 §11 未来扩展（先把单客户跑通）
 
-### 2.2 A/B 测试方法论（来自 2026-05-19 第二次会议）
+### 2.2 A/B 测试方法论
 
 为了量化验证链路价值，**先跑 Phase A 纯爆款链路**，再考虑 Phase B 知识库增强：
 
@@ -80,7 +80,7 @@ Phase B: 知识库增强 (未来扩展，§11)
 |------|------|------|
 | **Agent-first 设计哲学** | AI Agent 是**引擎贯穿所有环节**，不是某个步骤的"功能添加"；Hermes 本来就是 agent-loop 框架 | 不写硬编码 pipeline 脚本；工作流靠 agent goal + tools 表达；每一步由 agent 在 context 中自主判断；见 ADR-015 |
 | **真人感优先** | AI 替代录制会让内容失去人格魅力，违背小红书生态 | AI 只输出"参考稿"，用户必须真人录制 |
-| **效果导向（用效果买单）** | 老板对客户的承诺；客户买的是爆款，不是方法论 | 项目成功标准 = 至少 1 条达爆款阈值（§3），不是 "SKILL 写完" |
+| **效果导向（用效果买单）** | 对客户的核心承诺；客户买的是爆款结果，不是方法论 | 项目成功标准 = 至少 1 条达爆款阈值（§3），不是 "SKILL 写完" |
 | **本地优先** | 视频音频是敏感原料 | 转写、拆解全部本地完成，不传第三方 |
 | **自动发布禁用** | 小红书对发布行为反爬最严，封号代价高 | 发布上线全程手动 |
 | **采集合规化** | 直接爬小红书后台风险高，但完全手动又低效 | 用合法 SaaS（灰豚）+ 隔离小号 + 限频抓取（见 ADR-010） |
@@ -99,11 +99,11 @@ Phase B: 知识库增强 (未来扩展，§11)
 
 ## 3. 系统指标 (KPIs)
 
-> 初稿，等用户拍板。
+> 初稿，待持续迭代。
 
 ### 3.0 爆款定义（核心 KPI，按内容类型分档）
 
-用户提供的小红书爆款阈值矩阵（2026-05-19 拍板）：
+小红书爆款阈值矩阵（按内容类型分档，2026-05-19 确定）：
 
 | 内容类型 | 点赞 | 收藏 | 评论 | 备注 |
 |------|------|------|------|------|
@@ -214,7 +214,12 @@ Phase B: 知识库增强 (未来扩展，§11)
 | 拆解 SKILL v0.2 | `./xhs-content-pipeline/skills/xhs-viral-analysis/SKILL.md` | ✅ 已经过路飞实际作品 + 对照组验证迭代 |
 | **生成 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-script-generation/SKILL.md` | ✅ 针对路飞场景定制（情境再现型 + 攻击式开场 + 教育型反转），含视频/图文双骨架 + 路飞 vol.14 完整 few-shot |
 | **选题 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-topic-selection/SKILL.md` | ✅ 三维度评分（博主匹配 0.4 + 热度 0.4 + 可执行 0.2）+ 路飞 4 个已评分候选选题 + 反爆款选题信号 |
-| 项目导览 | `./xhs-content-pipeline/README.md` | ✅ |
+| **`run_skill.py` 调用脚本** | `./xhs-content-pipeline/run_skill.py` | ✅ 单次原子调用任意 SKILL，接 FreeModel API，不依赖 Hermes |
+| **`whisper_transcribe.py` 转写脚本** | `./xhs-content-pipeline/whisper_transcribe.py` | ✅ 本地 faster-whisper 音视频转写（plain/srt/json 输出），不依赖 Hermes 不依赖 API |
+| 依赖清单（核心） | `./xhs-content-pipeline/requirements.txt` | ✅ openai + python-dotenv |
+| 依赖清单（转写可选） | `./xhs-content-pipeline/requirements-transcribe.txt` | ✅ faster-whisper |
+| API 配置模板 | `./xhs-content-pipeline/.env.example` | ✅ FreeModel 双格式配置示例 |
+| 项目导览 | `./xhs-content-pipeline/README.md` | ✅ 含 run_skill.py 使用说明 |
 | 本文件 | `./CLAUDE.md` | ✅ |
 
 ### 4.3 待实现（按优先级）
@@ -303,22 +308,22 @@ Phase B: 知识库增强 (未来扩展，§11)
 | ID | 决策 | 日期 | 理由 |
 |----|------|------|------|
 | ADR-001 | 选 Hermes Agent 作为底层框架 | 2026-05-19 | 自学习闭环、多模型抽象、本地优先架构都对路；MIT 开源 |
-| ADR-002 | **拆分原"不爬不发"为两条**：发布禁用 / 采集合规化 | 2026-05-19 | 原一刀切过于保守，用户反馈手动 URL 太低效；采集和发布风险不同，应分别治理 |
+| ADR-002 | **拆分原"不爬不发"为两条**：发布禁用 / 采集合规化 | 2026-05-19 | 原一刀切过于保守，手动 URL 效率不足；采集和发布的封号风险分级不同，应分别治理 |
 | ADR-003 | 转写不用小红书"点点"，用 faster-whisper | 2026-05-19 | "点点"无 API；faster-whisper 本地可控 |
 | ADR-004 | SKILL 优先用 Markdown，不写代码 | 2026-05-19 | 提示词工程产物本质就是文档，便于迭代 |
 | ADR-005 | 所有自定义能力走 plugin，不动 hermes 核心 | 2026-05-19 | `hermes-agent-main/AGENTS.md:531` 明确禁止改核心 |
-| ADR-006 | 拆解框架升级为"互动三轴" | 2026-05-19 | 会议提出"开头/收藏/争议"三要素，原 SKILL 缺评论轴 |
-| ADR-007 | Phase A 不依赖个人知识库 | 2026-05-19 | 第二次会议提出 A/B 测试方法论：先纯爆款再加 KB 做对照 |
-| ADR-008 | CLAUDE.md 范围收窄到小红书爆款生产链路 | 2026-05-19 | 用户明确指示：知识库 / 私域 / 矩阵 / toB 全部不在本文件范围 |
-| ADR-009 | 不引入 OpenMontage | 2026-05-19 | 用户问询。OpenMontage 是 AI 端到端**生成**视频系统（TTS/AI avatar/AI 视觉），与"真人感优先"约束直接冲突；其 12 pipeline 无一覆盖"从社交平台采集分析"场景 |
+| ADR-006 | 拆解框架升级为"互动三轴" | 2026-05-19 | 结合"开头 / 收藏 / 争议"三要素扩展，原 SKILL 缺评论轴 |
+| ADR-007 | Phase A 不依赖个人知识库 | 2026-05-19 | 采用 A/B 测试方法论：先跑纯爆款链路再加 KB 做对照，量化 KB 增益 |
+| ADR-008 | CLAUDE.md 范围收窄到小红书爆款生产链路 | 2026-05-19 | 为防止 scope creep：知识库 / 私域 / 矩阵 / toB 全部归入 §11 未来扩展，不在本文件范围 |
+| ADR-009 | 不引入 OpenMontage | 2026-05-19 | 经评估，OpenMontage 是 AI 端到端**生成**视频系统（TTS / AI avatar / AI 视觉），与"真人感优先"约束直接冲突；其 12 pipeline 无一覆盖"从社交平台采集分析"场景 |
 | ADR-010 | 采集方案：灰豚 SaaS + 研究小号 + Playwright | 2026-05-19 | 灰豚是小红书数据平台中"性价比 + 免费试用"最优的；纯爬虫法律灰色 + 维护痛；用户日常账号封号代价高，故隔离一个研究小号专门用于视频下载 |
-| ADR-011 | **签约客户路飞作为 Phase A 试验场** | 2026-05-19 | 老板对话确认。路飞=设计师职业发展赛道，有大厂背书但还没爆过，是真实从 0 到 1 突破挑战。所有 SKILL 调优用路飞的实际数据，不用泛样本 |
-| ADR-012 | **商业模式：定制 SKILL + 效果买单** | 2026-05-19 | 老板对话。不同客户配不同 SKILL；客户买的是爆款，不是方法论。这是单客户级别的客户定制（不是多租户平台），不冲突 ADR-008 |
-| ADR-013 | **爆款必须有量化定义** | 2026-05-19 | 老板强调"物理特征"（点赞/收藏/评论）。具体阈值见 §3.0；针对设计垂类做了 weighted 调整（收藏率 > 点赞率） |
-| ADR-014 | **LMVK = LLM Wiki（结构化 Markdown 知识库）** | 2026-05-19 | 老板术语澄清。是 Phase B 的事；当前不实现。路飞的素材（面试视频/培训会议/笔记）以后按此方式整理 |
-| ADR-015 | **Agent-first 设计哲学：AI Agent 是引擎，不是 pipeline 中的一个节点** | 2026-05-19 | 用户明确指出"agent 是引擎贯穿所有环节而不是功能添加"。原 §5 工作流写成流程图式，是错的。Hermes 本来就是 agent-loop 框架。本项目不写硬编码 `pipeline.run()`，工作流靠 agent 在 context 中读 goal + 自主调 tools 实现。所有"流程"描述改写为"agent goal + 可用能力 + 决策模式" |
-| ADR-016 | **不引入 OpenHuman 到 Phase A，留作 Phase B 候选** | 2026-05-19 | 用户问询。OpenHuman 是个人长期记忆 AI agent（Memory Tree + 118 服务 OAuth + 80% token 压缩），定位是"做你的 KB"，不是"做内容拆解/生成"。当前 Phase A 是内容工程，Hermes 更对。Phase B 路飞 LMVK 时再评估 OpenHuman 是否作为 KB 实现方案 |
-| ADR-017 | **LLM 中转 = FreeModel（Anthropic + OpenAI 双格式）** | 2026-05-19 | 用户提供。`https://cc.freemodel.dev`(Anthropic) + `https://api.freemodel.dev`(OpenAI)，支持 tool calling。Phase 4 接 Hermes 时作为默认 provider；后期视稳定性再决定要不要备双源 |
+| ADR-011 | **签约客户路飞作为 Phase A 试验场** | 2026-05-19 | 路飞 = 设计师职业发展赛道，有大厂背书但还没爆过，是真实从 0 到 1 的突破挑战。所有 SKILL 调优用路飞的实际数据，不用泛样本 |
+| ADR-012 | **商业模式：定制 SKILL + 效果买单** | 2026-05-19 | 不同客户配不同 SKILL；客户买的是爆款，不是方法论。这是单客户级别的客户定制（不是多租户平台），不冲突 ADR-008 |
+| ADR-013 | **爆款必须有量化定义** | 2026-05-19 | 爆款必须用"物理特征"（点赞/收藏/评论）量化界定，不能凭感觉。具体阈值见 §3.0；针对设计垂类做了 weighted 调整（收藏率 > 点赞率） |
+| ADR-014 | **LMVK = LLM Wiki（结构化 Markdown 知识库）** | 2026-05-19 | 术语定义。LMVK 是 Phase B 的事，当前不实现。路飞的素材（模拟面试视频 / 培训课程录像 / 印象笔记 / 有道笔记）以后按此方式整理 |
+| ADR-015 | **Agent-first 设计哲学：AI Agent 是引擎，不是 pipeline 中的一个节点** | 2026-05-19 | AI Agent 是引擎贯穿所有环节，不是某个步骤的功能添加。原 §5 工作流写成流程图式，是错的方向。Hermes 本来就是 agent-loop 框架。本项目不写硬编码 `pipeline.run()`，工作流靠 agent 在 context 中读 goal + 自主调 tools 实现。所有"流程"描述改写为"agent goal + 可用能力 + 决策模式" |
+| ADR-016 | **不引入 OpenHuman 到 Phase A，留作 Phase B 候选** | 2026-05-19 | 经评估，OpenHuman 是个人长期记忆 AI agent（Memory Tree + 118 服务 OAuth + 80% token 压缩），定位是"做你的 KB"，不是"做内容拆解 / 生成"。当前 Phase A 是内容工程，Hermes 更对。Phase B 路飞 LMVK 时再评估 OpenHuman 是否作为 KB 实现方案 |
+| ADR-017 | **LLM 中转 = FreeModel（Anthropic + OpenAI 双格式）** | 2026-05-19 | `https://cc.freemodel.dev`(Anthropic) + `https://api.freemodel.dev`(OpenAI)，支持 tool calling。Phase 4 接 Hermes 时作为默认 provider；后期视稳定性再决定要不要备双源 |
 
 ---
 
@@ -469,13 +474,15 @@ result = agent.chat(f"""
 | 3.3 | 用 §3.0 阈值判定爆款达成情况 | ⏸ | 用户 |
 | 3.4 | 不达爆款 → 复盘 SKILL 哪里偏差 → 迭代 | ⏸ | Claude + 用户 |
 
-### Phase 4: 工程化（需要 Hermes 安装，**Phase 2-3 跑通后再启动**）
+### Phase 4: 工程化（SKILL 自动化调用 + Hermes Plugin）
 | # | 任务 | 状态 | 负责 | 前置 |
 |---|------|------|------|------|
-| 4.0 | 安装 Hermes，跑通 hello world | ⏸ | 用户 | Phase 2 跑通 + 至少一次爆款数据回看 |
-| 4.1 | Plugin 骨架（plugin.yaml + `__init__.py`） | ⏸ | Claude | 4.0 |
-| 4.2 | Tool: `whisper_transcribe`（音频转写） | ⏸ | Claude | 4.1 |
-| 4.3 | Tool: `analyze`（包装拆解 SKILL 调用） | ⏸ | Claude | 4.1 |
+| 4.0a | **`run_skill.py` 单次调用 CLI**（FreeModel 直连，不依赖 Hermes） | ✅ 完成 | - | - |
+| 4.0b | 安装 Hermes，跑通 hello world | ⏸ | 用户 | Phase 2-3 跑通 + 至少一次爆款数据回看 |
+| 4.1 | Plugin 骨架（plugin.yaml + `__init__.py`） | ⏸ | Claude | 4.0b |
+| 4.2a | **`whisper_transcribe.py` 单次转写 CLI**（faster-whisper 本地） | ✅ 完成 | - | - |
+| 4.2b | Tool: `whisper_transcribe`（包成 Hermes tool） | ⏸ | Claude | 4.1 |
+| 4.3 | Tool: `analyze`（把 run_skill.py 包成 Hermes tool） | ⏸ | Claude | 4.1 |
 | 4.4 | Tool: `huitun_collector`（灰豚 Playwright） | ⏸ | Claude | 4.1 + 用户准备灰豚账号 |
 | 4.5 | Tool: `xhs_video_downloader`（研究小号下视频） | ⏸ | Claude | 4.1 + 用户准备研究小号 |
 
@@ -484,7 +491,7 @@ result = agent.chat(f"""
 |---|------|------|------|
 | 5.1 | Tool: `generate`（多模型并行 + 选稿） | ⏸ | Claude |
 | 5.2 | CLI 命令: `hermes xhs collect`, `hermes xhs run` | ⏸ | Claude |
-| 5.3 | 豆包 provider plugin（如果用户拿到 key） | ⏸ | Claude（用户提供 key 后） |
+| 5.3 | 豆包 provider plugin（如果有 API key） | ⏸ | Claude（API key 就绪后） |
 
 ### Phase 6: 复盘闭环
 | # | 任务 | 状态 | 负责 |
@@ -496,13 +503,13 @@ result = agent.chat(f"""
 
 **Day 1-2 关键路径**：Phase 1.0 → 1.1 → 1.2 → 1.3 → 1.4 → 2.0 → 2.1 → 2.2 → 2.3 → 2.4。**全程纯 prompt 工程，不装 Hermes**。
 
-**Day 1-2 阻塞项**：等用户提供路飞 3-5 条作品的 URL（或直接文字稿）+ 同赛道大 V 3 条对照作品。**这是当前唯一阻塞**，给到我就能开干。
+**Day 1-2 起步素材需求**：路飞 3-5 条作品的 URL（或直接文字稿）+ 同赛道大 V 3 条对照作品。素材就位即可启动拆解。
 
 **关于灰豚 + 小号自动化 + Hermes**：是 Phase 4 的事，**不要在 Phase 2-3 跑通前启动**。早做会摊薄精力且无法在没有 SKILL v2 + 生成 SKILL 的情况下闭环价值。Day 1-2 完全用人工 URL/文字稿就够。
 
 ---
 
-## 10. 待用户拍板的开放问题
+## 10. 待定的开放问题
 
 | # | 问题 | 选项 | 我的建议 |
 |---|------|------|---------|
@@ -510,26 +517,26 @@ result = agent.chat(f"""
 | Q2 | A/B 测试 #1 的选题方向有候选吗？ | - | 路飞的素材里挑一个，"大厂面试常见题" / "作品集硬伤盘点" 之类 |
 | Q3 | 多模型对比要不要全部用？还是先 DeepSeek + Gemini 两家？ | - | 先两家更聚焦 |
 | Q4 | 系统指标 §3 的效率目标值你有调整意见吗？ | - | - |
-| Q5 | ~~爆款阈值~~ | ✅ 已答：用户提供分内容类型阈值矩阵，路飞按"实用干货类"档。详见 §3.0 | - |
+| Q5 | ~~爆款阈值~~ | ✅ 已确定：按内容类型分档阈值矩阵，路飞按"实用干货类"档。详见 §3.0 | - |
 | Q6 | 灰豚账号 + 研究小号什么时候准备？ | Phase 2 跑通后 / 现在就准备好 / 等用到再说 | 不急，Phase 4 才用到 |
-| **Q7** | **路飞已发布作品里，互动最高的 3 条 + 最低的 3 条 URL（或直接文字稿）** | - | **Day 1 阻塞项，关键** |
-| **Q8** | **路飞认可的同赛道爆款博主作品 3 条 URL（或文字稿）** | - | **Day 1 阻塞项** |
-| Q9 | ~~老板有 deadline 吗？~~ | ✅ 已答：1-2 天测试通过 | - |
-| **Q10** | **老板对"测试通过"的定义是哪种？** | A: SKILL 跑通 + 可录制逐字稿（Day 2 可达） / B: 真实爆款数据（Day 5+ 才可能）/ C: 看情况 | 需要跟老板对齐预期，避免承诺翻车 |
+| **Q7** | **路飞已发布作品里，互动最高的 3 条 + 最低的 3 条 URL（或直接文字稿）** | - | **Day 1 起步关键素材** |
+| **Q8** | **路飞认可的同赛道爆款博主作品 3 条 URL（或文字稿）** | - | **Day 1 起步关键素材** |
+| Q9 | ~~项目 deadline~~ | ✅ 已确定：1-2 天测试通过 | - |
+| **Q10** | **"测试通过"的具体定义** | A: SKILL 跑通 + 可录制逐字稿（Day 2 可达） / B: 真实爆款数据（Day 5+ 才可能）/ C: 看情况 | 需要对齐预期，避免承诺翻车 |
 
 ---
 
 ## 11. 未来扩展（**不在当前 CLAUDE.md 范围**，只做指针）
 
-以下议题用户已在会议中提过，但**当前项目不涉及具体实现**。等 Phase A 跑通后再讨论是否立项：
+以下议题已识别，但**当前项目不涉及具体实现**。等 Phase A 跑通后再讨论是否立项：
 
-| 议题 | 来源 | 当前态度 |
+| 议题 | 关联 | 当前态度 |
 |------|------|---------|
-| **Phase B：路飞 LMVK（LLM Wiki 知识库）+ 内容定制化** | 第一/二次会议 + 老板对话 | 等 Phase A 跑通至少 1 条爆款后启动；素材包括路飞模拟面试视频/培训会议/印象笔记/有道笔记 |
-| 知识库技术选型（向量库 / GraphRAG / 纯 Markdown + grep / **OpenHuman**） | 第二次会议 + 老板对话 + ADR-016 | LMVK 启动时一起决定。**OpenHuman**（[tinyhumansai/openhuman](https://github.com/tinyhumansai/openhuman)）是强候选：Memory Tree (Markdown+SQLite, Obsidian 兼容) + 118 服务 OAuth + 80% token 压缩，正好对路 LMVK 场景。但当前 Phase A 不引入，见 ADR-016 |
-| 私域转化策略（公众号 / 微信 / 用户生命周期） | 第二次会议 | 运营议题，非本项目范围 |
-| 矩阵化运营（主+副账号） | 第一次会议 | 等单账号跑通再讨论 |
-| **多客户 SKILL 平台化**（不同客户不同 SKILL 的工程化承载） | 老板对话 ADR-012 | 等 ≥ 2 个客户后再讨论平台化；路飞单客户跑通前不做 |
+| **Phase B：路飞 LMVK（LLM Wiki 知识库）+ 内容定制化** | A/B 测试方法论后半段 | 等 Phase A 跑通至少 1 条爆款后启动；素材包括路飞模拟面试视频 / 培训课程录像 / 印象笔记 / 有道笔记 |
+| 知识库技术选型（向量库 / GraphRAG / 纯 Markdown + grep / **OpenHuman**） | 见 ADR-016 | LMVK 启动时一起决定。**OpenHuman**（[tinyhumansai/openhuman](https://github.com/tinyhumansai/openhuman)）是强候选：Memory Tree (Markdown+SQLite, Obsidian 兼容) + 118 服务 OAuth + 80% token 压缩，正好对路 LMVK 场景。但当前 Phase A 不引入，见 ADR-016 |
+| 私域转化策略（公众号 / 微信 / 用户生命周期） | 运营议题 | 非本项目范围 |
+| 矩阵化运营（主 + 副账号） | 运营议题 | 等单账号跑通再讨论 |
+| **多客户 SKILL 平台化**（不同客户不同 SKILL 的工程化承载） | 见 ADR-012 | 等 ≥ 2 个客户后再讨论平台化；路飞单客户跑通前不做 |
 
 > 如果会话中出现这些议题，先指向本节，确认用户是要"在本项目内做"还是"另立项目"，不要默认开始实现。
 

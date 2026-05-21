@@ -1,0 +1,8 @@
+# 独立可选依赖：本地音视频转写
+# 安装：pip install -r requirements-transcribe.txt
+#
+# faster-whisper 自带 ctranslate2（推理引擎）+ pyav（编解码）
+# pyav 自带 ffmpeg lib，通常不需要系统装 ffmpeg
+# 首次运行会下载模型到 ~/.cache/huggingface/（medium ~ 1.5GB）
+
+faster-whisper>=1.0.0,<2.0.0
