@@ -421,6 +421,68 @@ def _parse_duration(s):
     return None
 
 
+XHS_NOTE_ID_RE = re.compile(r"/(?:item|explore|discovery/item)/([a-f0-9]{16,32})", re.IGNORECASE)
+
+
+def _extract_xhs_note_id(url):
+    """从小红书 URL 抽取 hex note_id。
+
+    覆盖以下场景：
+      - 直接 URL: https://www.xiaohongshu.com/explore/{hex}
+      - 直接 URL: https://www.xiaohongshu.com/discovery/item/{hex}?xsec_token=...
+      - 未登录 redirect: https://www.xiaohongshu.com/login?redirectPath=https%3A%2F%2F...%2Fitem%2F{hex}
+      - 404 redirect: https://www.xiaohongshu.com/404?source=...redirectPath=https%3A%2F%2F...%2Fexplore%2F{hex}
+    """
+    if not url:
+        return None
+    from urllib.parse import unquote
+    # 反复 unquote 几次（可能多层编码）
+    decoded = url
+    for _ in range(3):
+        new = unquote(decoded)
+        if new == decoded:
+            break
+        decoded = new
+    m = XHS_NOTE_ID_RE.search(decoded)
+    return m.group(1) if m else None
+
+
+def _resolve_real_xhs_url_by_index(context, page, idx, max_retries=2):
+    """
+    点击第 idx 个"原文"按钮 → 拿新 tab 真小红书 URL → 关 tab。
+    返回 (real_url, hex_note_id) 或 (None, None)。
+    """
+    for attempt in range(max_retries):
+        try:
+            yuan_wen = page.locator("text=原文").nth(idx)
+            try:
+                yuan_wen.scroll_into_view_if_needed(timeout=3000)
+                time.sleep(0.3)
+            except Exception:
+                pass
+
+            with context.expect_page(timeout=10000) as new_page_info:
+                yuan_wen.click(force=True, timeout=3000)
+            new_page = new_page_info.value
+            time.sleep(0.8)  # 等 URL 稳定 (redirect)
+            real_url = new_page.url
+            try:
+                new_page.close()
+            except Exception:
+                pass
+            hex_id = _extract_xhs_note_id(real_url)
+            if hex_id:
+                return real_url, hex_id
+            else:
+                sys.stderr.write(f"      ⚠ idx={idx} 新 tab URL 不含 hex: {real_url[:120]}\n")
+                return real_url, None  # URL 有但抽不出 hex
+        except Exception as e:
+            sys.stderr.write(f"      ⚠ idx={idx} attempt {attempt+1} failed: {str(e)[:80]}\n")
+            if attempt < max_retries - 1:
+                time.sleep(1.5)  # 重试前等
+    return None, None
+
+
 def _search_one_keyword(page, keyword: str, date_range: str, max_per_keyword: int) -> list:
     """对单个关键词（或不带关键词）执行搜索 + 抓取，返回笔记列表。"""
     sys.stderr.write(f"  → 关键词: '{keyword or '(默认热门)'}'\n")
@@ -450,8 +512,27 @@ def _search_one_keyword(page, keyword: str, date_range: str, max_per_keyword: in
     notes = _extract_notes_from_page(page)
     sys.stderr.write(f"  ← 抓到 {len(notes)} 条\n")
 
-    # 截到 max
-    return notes[:max_per_keyword]
+    # 5) 截到 max（先截再 resolve，省 click 次数）
+    notes = notes[:max_per_keyword]
+
+    # 6) 为每条 click "原文" 拿真小红书 URL + hex note_id
+    context = page.context
+    sys.stderr.write(f"  → 解析真小红书 URL ({len(notes)} 条, 约 +{len(notes)*3}s) ...\n")
+    for i, n in enumerate(notes):
+        real_url, hex_id = _resolve_real_xhs_url_by_index(context, page, i)
+        if real_url and hex_id:
+            n["url"] = f"https://www.xiaohongshu.com/explore/{hex_id}"
+            n["xhs_note_id"] = hex_id
+            n["raw_xhs_url"] = real_url  # 含 xsec_token 的完整 URL
+            n["huitun_note_id"] = n["note_id"]  # 备份灰豚内部 ID
+            n["note_id"] = hex_id  # 主 note_id = 小红书 hex
+        else:
+            n["url"] = None
+            n["xhs_note_id"] = None
+            n["huitun_note_id"] = n["note_id"]
+        time.sleep(random.uniform(0.5, 1.5))  # 反爬
+
+    return notes
 
 
 def cmd_search(args):
@@ -523,13 +604,13 @@ def cmd_search(args):
         finally:
             browser.close()
 
-    # 去重（按 URL）
-    seen_urls = set()
+    # 去重（按 row_key，覆盖 resolve 失败 URL=None 情况）
+    seen_keys = set()
     deduped = []
     for note in all_notes:
-        url = note.get("url")
-        if url and url not in seen_urls:
-            seen_urls.add(url)
+        k = note.get("row_key") or note.get("note_id")
+        if k and k not in seen_keys:
+            seen_keys.add(k)
             deduped.append(note)
 
     # 截到 top_n
