@@ -36,12 +36,21 @@ huitun_collect.py - 灰豚数据小红书爆款采集（Phase 4.4 step 1: 采集
     - Headless 默认 False（首跑显示浏览器，证明是真人操作模式）
 """
 import argparse
+import io
 import json
 import random
+import re
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Windows cmd UTF-8 兼容
+try:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 
 def _require_playwright():
@@ -61,7 +70,8 @@ def _require_playwright():
 # 配置常量
 PROJECT_DIR = Path(__file__).parent
 SESSION_FILE = PROJECT_DIR / "tools" / "huitun_session.json"  # gitignored
-HUITUN_BASE = "https://www.huitun.com"  # TODO 待 explore 阶段确认正确入口 URL
+HUITUN_BASE = "https://xhs.huitun.com"  # 红薯版（小红书板块）
+WORKBENCH_URL = "https://xhs.huitun.com/#/home"
 
 # 路飞场景默认赛道关键词（Phase 4.4 设计原则：只覆盖路飞，不做通用）
 DEFAULT_NICHE_KEYWORDS = [
@@ -218,61 +228,13 @@ def cmd_explore():
 # ============================================================
 # 子命令：search - 主采集逻辑
 # ============================================================
-def _search_one_keyword(page, keyword: str, date_range: str, max_per_keyword: int) -> list:
-    """
-    对单个关键词执行搜索 + 抓取，返回笔记 dict 列表。
-
-    ⚠️ TODO: 以下 selector 是 placeholder，必须经 explore 阶段后填实。
-    """
-    notes = []
-
-    sys.stderr.write(f"  → 搜索关键词: '{keyword}'\n")
-    _delay()
-
-    # TODO (PLACEHOLDER - 待 explore 阶段确认):
-    # 1) 跳转到灰豚小红书爆款搜索页
-    #    page.goto(f"{HUITUN_BASE}/xhs/note-search?keyword={keyword}")
-    #
-    # 2) 等加载 + 切到笔记 tab
-    #    page.wait_for_selector('.tab-note', timeout=10000)
-    #    page.click('.tab-note')
-    #
-    # 3) 按互动数降序排序
-    #    page.click('button:has-text("互动")')
-    #
-    # 4) 选时间范围（"近 7 天"等）
-    #    page.click(f'button:has-text("近 {date_range}")')
-    #
-    # 5) 抓列表行（每行一条笔记）
-    #    rows = page.locator('.note-row').all()
-    #    for row in rows[:max_per_keyword]:
-    #        notes.append({
-    #            "url": row.locator('a').get_attribute('href'),
-    #            "title": row.locator('.title').text_content().strip(),
-    #            "author": row.locator('.author').text_content().strip(),
-    #            "note_type": "video" if row.locator('.icon-video').count() else "graphic",
-    #            "publish_date": row.locator('.date').text_content().strip(),
-    #            "likes": _parse_count(row.locator('.likes').text_content()),
-    #            "collects": _parse_count(row.locator('.collects').text_content()),
-    #            "comments": _parse_count(row.locator('.comments').text_content()),
-    #        })
-    #        _delay()
-    #
-    # 6) 翻页（如有需要 + 还没到 max_per_keyword）
-
-    sys.stderr.write(
-        f"  ⚠️  selector 待 explore 阶段确认。当前返回空列表。\n"
-        f"  ⚠️  开发流程：先跑 `python huitun_collect.py explore` 探索灰豚 UI 后填实。\n"
-    )
-
-    return notes
-
-
-def _parse_count(text: str) -> int:
-    """灰豚的数字可能是 '3.5w' / '1.2万' / '123' 等格式，统一转 int。"""
+def _parse_count(text):
+    """灰豚的数字可能是 '3.5w' / '1.2万' / '123' / '6,102' / '无' 等，统一转 int。"""
     if not text:
         return 0
-    text = text.strip().replace(",", "")
+    text = str(text).strip().replace(",", "").replace("，", "")
+    if text in ("无", "-", "—", ""):
+        return 0
     try:
         if text.endswith("w") or text.endswith("万"):
             return int(float(text.rstrip("w万")) * 10000)
@@ -281,6 +243,215 @@ def _parse_count(text: str) -> int:
         return int(float(text))
     except (ValueError, AttributeError):
         return 0
+
+
+NOTE_SEARCH_URL = "https://xhs.huitun.com/#/note/note_search"
+
+
+def _enter_note_search_page(page):
+    """Goto 笔记查找页 + 关 modal。"""
+    # 关闭可能的二维码 modal
+    try:
+        page.evaluate("""() => {
+            document.querySelectorAll('.ant-modal-wrap, .ant-modal-mask').forEach(m => m.remove());
+        }""")
+    except Exception:
+        pass
+
+    page.goto(NOTE_SEARCH_URL, wait_until="domcontentloaded", timeout=20000)
+    time.sleep(5)  # 等 SPA + 列表加载
+
+    # 验证列表有数据
+    row_count = page.locator("tr.ant-table-row").count()
+    if row_count == 0:
+        raise RuntimeError(f"笔记查找页没有列表行，URL={page.url}（session 可能失效）")
+    sys.stderr.write(f"  → 进入笔记查找页 ({row_count} 行)\n")
+
+
+def _maybe_search_keyword(page, keyword):
+    """在笔记查找页输入关键词搜索（精准匹配专用框，避开顶部全局搜索）。"""
+    if not keyword:
+        return False
+    try:
+        cnt = page.locator("input[placeholder='搜索笔记标题/关键词']").count()
+        if cnt == 0:
+            sys.stderr.write(f"  ⚠ 没找到笔记搜索框（页面结构变了？）\n")
+            return False
+        search_input = page.locator("input[placeholder='搜索笔记标题/关键词']").first
+        search_input.fill(keyword, timeout=5000)
+        time.sleep(0.5)
+        search_input.press("Enter")
+        time.sleep(6)
+        return True
+    except Exception as e:
+        sys.stderr.write(f"  ⚠ 搜索 '{keyword}' 失败: {e}\n")
+        return False
+
+
+def _extract_notes_from_page(page):
+    """从当前页面 DOM 抓所有笔记数据，返回 dict 列表。
+
+    数据契约（来自 explore_dump_rows.py 验证）：
+      - 每个笔记占 2 行 `tr.ant-table-row`（10 td 主行 + 3 td 扩展行）
+      - 同一 data-row-key 的两行合并为一条记录
+      - data-row-key 格式: '{type}-{publish_time}-{note_id}'，末段为小红书 note_id
+      - 主行 10 td: 笔记信息 / 发布时间 / 预估阅读量 / 互动量 / 点赞 / 收藏 / 评论 / 分享 / 提及品牌 / 操作
+      - 扩展行 3 td: 博主基本信息 / 报价 / 粉丝占比
+    """
+    raw = page.evaluate("""() => {
+        const out = {};
+        document.querySelectorAll('tr.ant-table-row').forEach(tr => {
+            const key = tr.getAttribute('data-row-key');
+            if (!key) return;
+            const tds = Array.from(tr.querySelectorAll('td')).map(td => (td.innerText || '').trim());
+            if (!out[key]) out[key] = { key: key, main: null, extra: null };
+            if (tds.length >= 8) {
+                // 主行：提取详细 DOM 字段
+                const titleEl = tr.querySelector('.styles_note_title__1FLfF');
+                const imgEl = tr.querySelector('.styles_note_info__1xd2R img, .styles_note_info__1kDy0 img');
+                const durationEl = tr.querySelector('.styles_duration__1weRs span');
+                const tagEls = tr.querySelectorAll('.styles_item_tag__1AvT_');
+                out[key].main = {
+                    tds: tds,
+                    title: titleEl ? titleEl.innerText.trim() : null,
+                    thumbnail: imgEl ? imgEl.src : null,
+                    duration: durationEl ? durationEl.innerText.trim() : null,
+                    tags: Array.from(tagEls).map(e => e.innerText.trim()).filter(t => t && t !== '更多...'),
+                };
+            } else {
+                // 扩展行：博主信息
+                const authorNameEl = tr.querySelector('.style_one_line__3wm7P');
+                const authorAvatarEl = tr.querySelector('img');
+                // "粉丝数：293.3wID：460729078"
+                const anchorIdxEls = tr.querySelectorAll('.style_anchor_idx__2scpz');
+                let followers = null;
+                let author_id = null;
+                anchorIdxEls.forEach(el => {
+                    const t = el.innerText || '';
+                    const fm = t.match(/粉丝数[：:]\\s*([\\d.,wkw万千]+)/);
+                    if (fm) followers = fm[1];
+                    const im = t.match(/ID[：:]\\s*(\\d+)/);
+                    if (im) author_id = im[1];
+                });
+                // 找博主等级（头部达人/腰部达人/素人 等）
+                const levelEl = tr.querySelector('.styles_other_type_v2__3BkEW');
+                out[key].extra = {
+                    tds: tds,
+                    author_name: authorNameEl ? authorNameEl.innerText.trim() : null,
+                    author_avatar: authorAvatarEl ? authorAvatarEl.src : null,
+                    author_id: author_id,
+                    author_followers_raw: followers,
+                    author_level: levelEl ? levelEl.innerText.trim() : null,
+                };
+            }
+        });
+        return Object.values(out);
+    }""")
+
+    notes = []
+    for r in raw:
+        m = r.get("main") or {}
+        e = r.get("extra") or {}
+        key = r["key"]
+
+        # 解析 note_id from data-row-key (末段)
+        parts = key.split("-")
+        # 笔记 ID 通常是末段，但因为 publish_time 也含 '-'，要从末尾找最长的 hex 段
+        note_id = parts[-1] if parts else key
+
+        # 主行 10 td 顺序: 0=笔记信息 1=发布时间 2=预估阅读 3=互动量 4=点赞 5=收藏 6=评论 7=分享 8=提及品牌 9=操作
+        tds = m.get("tds") or []
+        if len(tds) < 8:
+            continue  # 不完整跳过
+
+        title = m.get("title")
+        # 备用：从笔记信息单元拆出标题（第一行）
+        if not title and tds[0]:
+            title = tds[0].split("\n")[0].strip()
+            if title and title[0].isdigit() and ":" in title[:6]:
+                # 视频时长(如 "02:19")在前，标题在第 2 行
+                lines = tds[0].split("\n")
+                title = lines[1] if len(lines) > 1 else title
+
+        likes = _parse_count(tds[4] if len(tds) > 4 else "")
+        collects = _parse_count(tds[5] if len(tds) > 5 else "")
+        comments = _parse_count(tds[6] if len(tds) > 6 else "")
+        shares = _parse_count(tds[7] if len(tds) > 7 else "")
+
+        notes.append({
+            "url": f"https://www.xiaohongshu.com/explore/{note_id}",
+            "note_id": note_id,
+            "row_key": key,
+            "title": title,
+            "thumbnail": m.get("thumbnail"),
+            "note_type": "video" if m.get("duration") else "graphic",
+            "duration_seconds": _parse_duration(m.get("duration")),
+            "publish_date": (tds[1] if len(tds) > 1 else "").strip(),
+            "tags": m.get("tags") or [],
+            "predicted_read": _parse_count(tds[2] if len(tds) > 2 else ""),
+            "total_interaction": _parse_count(tds[3] if len(tds) > 3 else ""),
+            "likes": likes,
+            "collects": collects,
+            "comments": comments,
+            "shares": shares,
+            "mentioned_brand": (tds[8] if len(tds) > 8 else "").strip(),
+            # CES 算法权重: 点赞×1 + 收藏×1 + 评论×4 + 转发×4 + 关注×8
+            # 灰豚无关注数，此处只算前 4 项
+            "ces_partial": likes * 1 + collects * 1 + comments * 4 + shares * 4,
+            "author": {
+                "name": e.get("author_name"),
+                "id": e.get("author_id"),
+                "avatar": e.get("author_avatar"),
+                "level": e.get("author_level"),
+                "followers_raw": e.get("author_followers_raw"),
+                "followers": _parse_count(e.get("author_followers_raw") or ""),
+            },
+        })
+
+    return notes
+
+
+def _parse_duration(s):
+    """'02:19' / '14:37' → 秒数；None / 非视频 → None"""
+    if not s:
+        return None
+    m = re.match(r"^(\d+):(\d+)$", s.strip())
+    if m:
+        return int(m.group(1)) * 60 + int(m.group(2))
+    return None
+
+
+def _search_one_keyword(page, keyword: str, date_range: str, max_per_keyword: int) -> list:
+    """对单个关键词（或不带关键词）执行搜索 + 抓取，返回笔记列表。"""
+    sys.stderr.write(f"  → 关键词: '{keyword or '(默认热门)'}'\n")
+    _delay()
+
+    # 1) 进笔记查找页（如果还没进）
+    if "/note_search" not in page.url:
+        try:
+            _enter_note_search_page(page)
+        except Exception as e:
+            sys.stderr.write(f"  ⚠ 进笔记查找页失败: {e}\n")
+            return []
+
+    # 2) 输关键词搜索（如果有）
+    if keyword:
+        _maybe_search_keyword(page, keyword)
+
+    # 3) 等列表加载稳定
+    try:
+        page.wait_for_selector("tr.ant-table-row", timeout=15000)
+        time.sleep(2)  # 给图片懒加载等时间
+    except Exception as e:
+        sys.stderr.write(f"  ⚠ 未找到列表: {e}\n")
+        return []
+
+    # 4) 抓数据
+    notes = _extract_notes_from_page(page)
+    sys.stderr.write(f"  ← 抓到 {len(notes)} 条\n")
+
+    # 截到 max
+    return notes[:max_per_keyword]
 
 
 def cmd_search(args):
@@ -313,6 +484,15 @@ def cmd_search(args):
         browser = p.chromium.launch(headless=args.headless)
         context = browser.new_context(storage_state=str(SESSION_FILE))
         page = context.new_page()
+
+        # 启动浏览器后先 navigate 到红薯版工作台
+        sys.stderr.write(f"→ 导航到 {WORKBENCH_URL}\n")
+        try:
+            page.goto(WORKBENCH_URL, wait_until="domcontentloaded", timeout=30000)
+        except Exception as e:
+            sys.stderr.write(f"⚠ goto 失败: {e}\n")
+        time.sleep(5)  # 等 SPA JS 渲染
+        sys.stderr.write(f"→ 落地 URL: {page.url}\n")
 
         try:
             for keyword in keywords:

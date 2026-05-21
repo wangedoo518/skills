@@ -37,6 +37,18 @@ desktop.ini
 *storage_state*.json
 huitun_session*.json
 
+# 灰豚探索输出（截图含账号 ID 等信息，临时调试用）
+explore_output/
+**/explore_output/
+
+# 采集输出（实际抓回的数据 — 私有，不入库）
+outputs/
+**/outputs/
+
+# 一次性探索脚本（开发期工具，已完成使命，不入库）
+**/explore_huitun_*.py
+**/explore_dump_rows.py
+
 # Python（未来工程化阶段会有）
 __pycache__/
 *.pyc
