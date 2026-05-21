@@ -211,8 +211,8 @@ Phase B: 知识库增强 (未来扩展，§11)
 | 组件 | 路径 | 状态 |
 |------|------|------|
 | 项目骨架 | `./xhs-content-pipeline/` | ✅ |
-| 拆解 SKILL v0.2 | `./xhs-content-pipeline/skills/xhs-viral-analysis/SKILL.md` | ✅ 已经过路飞实际作品 + 对照组验证迭代 |
-| **生成 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-script-generation/SKILL.md` | ✅ 针对路飞场景定制（情境再现型 + 攻击式开场 + 教育型反转），含视频/图文双骨架 + 路飞 vol.14 完整 few-shot |
+| 拆解 SKILL **v0.3** | `./xhs-content-pipeline/skills/xhs-viral-analysis/SKILL.md` | ✅ 引入 CES 算法权重（关注 8 / 评论 4 / 转发 4 / 点赞 1 / 收藏 1）+ 2 小时窗口规则；第六维"关注转化暗示"+ 爆点主驱动互动类型 + CES 阈值矩阵 + 互动质量诊断 |
+| **生成 SKILL v0.2** | `./xhs-content-pipeline/skills/xhs-script-generation/SKILL.md` | ✅ 引入 CES 三件触发器（关注转化 + 评论 prompt + 转发钩子）强制内置；路飞 vol.14 初稿 CTA 段已按 CES 三件重写；预期 CES 提升 21% |
 | **选题 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-topic-selection/SKILL.md` | ✅ 三维度评分（博主匹配 0.4 + 热度 0.4 + 可执行 0.2）+ 路飞 4 个已评分候选选题 + 反爆款选题信号 |
 | **`run_skill.py` 调用脚本** | `./xhs-content-pipeline/run_skill.py` | ✅ 单次原子调用任意 SKILL，接 FreeModel API，不依赖 Hermes |
 | **`whisper_transcribe.py` 转写脚本** | `./xhs-content-pipeline/whisper_transcribe.py` | ✅ 本地 faster-whisper 音视频转写（plain/srt/json 输出），不依赖 Hermes 不依赖 API |
