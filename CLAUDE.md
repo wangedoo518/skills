@@ -184,7 +184,7 @@ Phase B: 知识库增强 (未来扩展，§11)
 │  能力池 (Skills + Tools + Knowledge)                                  │
 │                                                                       │
 │  Skills (Agent 看的领域知识 / 决策框架):                                │
-│    选题分析(待建) │ 拆解 ✅ │ 生成(待建) │ 复盘(待建)                   │
+│    选题 ✅ │ 拆解 ✅ (v0.3.2 严格反胡编) │ 生成 ✅ │ 复盘(待建)         │
 │                                                                       │
 │  Tools (Agent 能调的执行能力):                                          │
 │    whisper_transcribe │ analyze │ generate │ review │                 │
@@ -211,7 +211,11 @@ Phase B: 知识库增强 (未来扩展，§11)
 | 组件 | 路径 | 状态 |
 |------|------|------|
 | 项目骨架 | `./xhs-content-pipeline/` | ✅ |
-| 拆解 SKILL **v0.3** | `./xhs-content-pipeline/skills/xhs-viral-analysis/SKILL.md` | ✅ 引入 CES 算法权重（关注 8 / 评论 4 / 转发 4 / 点赞 1 / 收藏 1）+ 2 小时窗口规则；第六维"关注转化暗示"+ 爆点主驱动互动类型 + CES 阈值矩阵 + 互动质量诊断 |
+| 拆解 SKILL **v0.3.2** | `./xhs-content-pipeline/skills/xhs-viral-analysis/SKILL.md` | ✅ v0.3 引入 CES 算法权重 + 2 小时窗口 + 第六维"关注转化暗示"+ 爆点主驱动 + CES 阈值矩阵 + 互动质量诊断；**v0.3.2 严格反胡编模式**（撤销 v0.3.1 元数据推断路径，缺正文/转写时禁止脑补钩子六维/框架/情绪曲线，只允许 CES + 互动诊断硬数据计算，见 ADR-018）|
+| **xhs-pipeline Hermes Plugin** | `./xhs-content-pipeline/plugin.yaml` + `__init__.py` | ✅ 注册 3 个 huitun_* tool（search/hot/collect_my），junction 到 `~/.hermes/plugins/xhs-pipeline/`；agent 可在 hermes 里调用，端到端 CLI + 微信验证通过 |
+| **Hermes 本地安装** | `C:\Users\111\AppData\Local\hermes\` | ✅ v0.14.0 (2026.5.16) + 7 commits update；DeepSeek V4 Flash via `api.deepseek.com` 直连（key 在 config.yaml）；3 个 xhs SKILL junction 到 `~/.hermes/skills/` |
+| **Weixin Gateway**（ClawBot, Bonus 不在原 TODO）| `~/.hermes/weixin/accounts/884e75d05c76@im.bot.json` | ✅ hermes gateway setup 扫码绑定，iLink Bot API；DM pairing approval 启用；Scheduled Task 开机自启；端到端在微信里调 huitun + viral-analysis 跑通（见 ADR-019）|
+| **Agent 自动落盘报告**（端到端验证产物）| `./xhs-content-pipeline/reports/{viral-analysis,topic-selection,script-generation}-*.md` | ✅ 3 SKILL 接力测试 agent 自主决定保存的报告（agent-first 哲学最佳实战）；vol.14 字节作品集面试稿预期 CES 7296，比 vol.13 +20% |
 | **生成 SKILL v0.2** | `./xhs-content-pipeline/skills/xhs-script-generation/SKILL.md` | ✅ 引入 CES 三件触发器（关注转化 + 评论 prompt + 转发钩子）强制内置；路飞 vol.14 初稿 CTA 段已按 CES 三件重写；预期 CES 提升 21% |
 | **选题 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-topic-selection/SKILL.md` | ✅ 三维度评分（博主匹配 0.4 + 热度 0.4 + 可执行 0.2）+ 路飞 4 个已评分候选选题 + 反爆款选题信号 |
 | **`run_skill.py` 调用脚本** | `./xhs-content-pipeline/run_skill.py` | ✅ 单次原子调用任意 SKILL，接 FreeModel API，不依赖 Hermes |
@@ -324,6 +328,10 @@ Phase B: 知识库增强 (未来扩展，§11)
 | ADR-015 | **Agent-first 设计哲学：AI Agent 是引擎，不是 pipeline 中的一个节点** | 2026-05-19 | AI Agent 是引擎贯穿所有环节，不是某个步骤的功能添加。原 §5 工作流写成流程图式，是错的方向。Hermes 本来就是 agent-loop 框架。本项目不写硬编码 `pipeline.run()`，工作流靠 agent 在 context 中读 goal + 自主调 tools 实现。所有"流程"描述改写为"agent goal + 可用能力 + 决策模式" |
 | ADR-016 | **不引入 OpenHuman 到 Phase A，留作 Phase B 候选** | 2026-05-19 | 经评估，OpenHuman 是个人长期记忆 AI agent（Memory Tree + 118 服务 OAuth + 80% token 压缩），定位是"做你的 KB"，不是"做内容拆解 / 生成"。当前 Phase A 是内容工程，Hermes 更对。Phase B 路飞 LMVK 时再评估 OpenHuman 是否作为 KB 实现方案 |
 | ADR-017 | **LLM 中转 = FreeModel（Anthropic + OpenAI 双格式）** | 2026-05-19 | `https://cc.freemodel.dev`(Anthropic) + `https://api.freemodel.dev`(OpenAI)，支持 tool calling。Phase 4 接 Hermes 时作为默认 provider；后期视稳定性再决定要不要备双源 |
+| ADR-018 | **SKILL v0.3.2 严格反胡编模式**：撤销 v0.3.1 "huitun 元数据 → 推断钩子六维评分" 路径 | 2026-05-22 | v0.3.1 引入 huitun 元数据推断后, agent 在缺正文/视频转写时会基于标题脑补钩子六维评分 / 框架 / 情绪曲线，违反 §8.1「必须 cite 原文」。v0.3.2 限制元数据模式只输出 CES + 互动诊断（数学计算），严禁推断五维分析；agent 必须主动建议调 xhs_extract_note 或 whisper_transcribe 补充内容输入。**反向验证通过**：纯元数据输入时 agent 输出 `[硬数据模式]` 拒绝脑补 |
+| ADR-019 | **Weixin gateway 走 Hermes 原生 iLink Bot API**（取代外部 MCP 方案）| 2026-05-22 | Hermes v0.14.0+7commits 原生支持腾讯 iLink Bot API（仅个人微信号、私聊，群聊基本不投递）。`hermes gateway setup` 扫码绑定后 hermes 可在微信里被 @ 收消息+回复。session 约 2-3 小时过期需重 setup（iLink 限制）。完全够 Phase A 单客户场景；放弃了之前考虑的"复用 Claude Code 的 wechat MCP" 方案 |
+| ADR-020 | **xhs-pipeline plugin 装载用 junction（不走 GitHub）** | 2026-05-22 | `hermes plugins install` 只接 Git URL/owner/repo，但开发期反复改代码不适合 push-install 循环。改用 Windows junction（`mklink /J`）把 `xhs-content-pipeline\` 链到 `~/.hermes/plugins/xhs-pipeline\`，hermes 启动自动识别为 user plugin，`hermes plugins enable xhs-pipeline` 即生效。改代码立刻生效（无需重新 install），同时保留以后推 GitHub 选项 |
+| ADR-021 | **视频解析 tool 由用户自接，本项目不实现 xhs_video_downloader** | 2026-05-22 | 用户已有现成视频解析工具会接入；本项目 Phase 4.5 (xhs_video_downloader) 放弃，避免重复造轮子 + 规避研究小号反爬维护成本。Plugin 只负责采集（huitun_*）和 SKILL 调用，视频内容由用户外部喂入；保持 ADR-015 agent-first 原子能力组合 |
 
 ---
 
@@ -478,15 +486,18 @@ result = agent.chat(f"""
 | # | 任务 | 状态 | 负责 | 前置 |
 |---|------|------|------|------|
 | 4.0a | **`run_skill.py` 单次调用 CLI**（FreeModel 直连，不依赖 Hermes） | ✅ 完成 | - | - |
-| 4.0b | 安装 Hermes，跑通 hello world | ⏸ | 用户 | Phase 2-3 跑通 + 至少一次爆款数据回看 |
-| 4.1 | Plugin 骨架（plugin.yaml + `__init__.py`） | ⏸ | Claude | 4.0b |
+| 4.0b | 安装 Hermes，跑通 hello world | ✅ 完成 (2026-05-22) | 用户 | - |
+| 4.1 | Plugin 骨架（plugin.yaml + `__init__.py`） | ✅ 完成 (2026-05-22, xhs-pipeline plugin) | Claude | - |
 | 4.2a | **`whisper_transcribe.py` 单次转写 CLI**（faster-whisper 本地） | ✅ 完成 | - | - |
-| 4.2b | Tool: `whisper_transcribe`（包成 Hermes tool） | ⏸ | Claude | 4.1 |
-| 4.3 | Tool: `analyze`（把 run_skill.py 包成 Hermes tool） | ⏸ | Claude | 4.1 |
-| 4.4a | **`huitun_collect.py` 采集 CLI 骨架**（login + explore + search 三命令，selector 待填） | 🟡 进行中 | Claude | - |
-| 4.4b | explore 灰豚 UI + 填实 search selector | ⏸ 阻塞 | Claude（用户给 cookie 后） | 4.4a + 用户跑 login 保存 session |
-| 4.4c | Tool: `huitun_collector`（包成 Hermes tool） | ⏸ | Claude | 4.1 + 4.4b |
-| 4.5 | Tool: `xhs_video_downloader`（研究小号下视频） | ⏸ | Claude | 4.1 + 用户准备研究小号 |
+| 4.2b | Tool: `whisper_transcribe`（包成 Hermes tool） | 🚫 取消 (用户接外部视频解析工具，见 ADR-021) | Claude | - |
+| 4.3 | Tool: `analyze`（把 run_skill.py 包成 Hermes tool） | ✅ 完成 (3 个 SKILL 直接 junction 到 ~/.hermes/skills/ 给 agent 用) | Claude | - |
+| 4.4a | **`huitun_collect.py` 采集 CLI 骨架** | ✅ 完成 | Claude | - |
+| 4.4b | explore 灰豚 UI + 填实 search selector | ✅ 完成 (URL 抽取 10/10 成功率) | Claude | - |
+| 4.4c | Tool: `huitun_collector`（包成 Hermes tool） | ✅ 完成 (2026-05-22, 3 tool: search/hot/collect_my) | Claude | - |
+| 4.5 | Tool: `xhs_video_downloader`（研究小号下视频） | 🚫 取消 (见 ADR-021) | - | - |
+| **4.6** | **Weixin gateway 接入**（hermes gateway setup + iLink 扫码 + DM pairing） | ✅ 完成 (2026-05-22, Bonus 不在原 TODO，见 ADR-019) | Claude + 用户 | - |
+| **4.7** | **SKILL v0.3.2 严格反胡编升级** | ✅ 完成 (2026-05-22, Bonus 不在原 TODO，见 ADR-018) | Claude | - |
+| **4.8** | **3 SKILL 接力调用验证 + reports/ 自动落盘** | ✅ 完成 (2026-05-22, 端到端 agent-first 实战胜利) | Claude | 4.1-4.7 |
 
 ### Phase 5: 多模型生成 + CLI 串联
 | # | 任务 | 状态 | 负责 |
@@ -567,5 +578,5 @@ result = agent.chat(f"""
 
 ---
 
-**Last updated**: 2026-05-19 by Claude (Opus 4.7) — Agent-first 设计哲学 (ADR-015) + OpenHuman 评估 (ADR-016) + FreeModel 中转 (ADR-017)
-**Next review**: 路飞跑出第一条达爆款阈值的内容后
+**Last updated**: 2026-05-22 by Claude — Hermes 安装 + xhs-pipeline plugin 跑通 (4.1/4.4c) + Weixin gateway 接入 (4.6, ADR-019) + SKILL v0.3.2 严格反胡编 (4.7, ADR-018) + 3 SKILL 接力链路验证 (4.8). agent 自主落盘 3 份报告在 `xhs-content-pipeline/reports/`. ADR-020 (junction 装载) + ADR-021 (取消自建视频下载) 收尾决策记录在案
+**Next review**: 路飞跑出第一条达爆款阈值的内容后；或下次接入视频解析工具时

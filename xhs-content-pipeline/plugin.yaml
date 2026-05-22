@@ -1,0 +1,9 @@
+name: xhs-pipeline
+version: 0.1.0
+description: "小红书爆款内容采集 plugin — 包装 huitun_collect.py 的 3 个采集源（A 品类搜索 / B 热门榜单 / C 我的收藏）。每个 tool 是单一原子能力（ADR-015），由 agent 自主组合。"
+author: azan
+kind: backend
+provides_tools:
+  - huitun_search
+  - huitun_hot
+  - huitun_collect_my
