@@ -113,10 +113,15 @@ def _summarize_for_agent(payload: dict, max_notes: int = 20) -> dict:
         else:
             author = author_raw
 
+        # 注意 URL 字段优先级:
+        # 1. raw_xhs_url - huitun 抓回的带 xsec_token 完整 URL（小红书登录态下可访问）
+        # 2. real_xhs_url - 兼容旧字段名（如果某天 huitun_collect.py 改字段）
+        # 3. url - 不带 token 的 explore/<id>（小红书 300031 登录墙会拒）
+        # xhs_extract_note 必须用带 token 的 URL 才能通过登录墙
         trimmed_notes.append({
             "title": n.get("title"),
             "author": author,
-            "real_xhs_url": n.get("real_xhs_url") or n.get("url"),
+            "real_xhs_url": n.get("raw_xhs_url") or n.get("real_xhs_url") or n.get("url"),
             "note_type": n.get("note_type"),
             "likes": n.get("likes"),
             "collects": n.get("collects"),

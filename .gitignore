@@ -2,6 +2,9 @@
 hermes-agent-main/
 hermes-agent/
 
+# Aurora plugin（老板 wangedoo518/aurora 独立 repo，本地 clone 不入我们库；通过 junction 接到 hermes plugins）
+aurora/
+
 # 客户素材目录（敏感，不入库）—— 注意只屏蔽目录不屏蔽 *.txt，否则会误伤 requirements.txt
 videos/
 transcripts/
