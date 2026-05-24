@@ -18,6 +18,9 @@ run_skill.py —— 用 FreeModel API 调用任意 SKILL
     # 深挖评论区
     python run_skill.py comment-intelligence -i ./inputs/comments.md -o ./outputs/comment_report.md
 
+    # 路飞知识水电站：内部运营编排
+    python run_skill.py lufei-ops -i ./inputs/weixin_dm.md -o ./outputs/kanban_cards.md
+
     # 从 stdin 读取
     cat transcript.txt | python run_skill.py viral-analysis
 
@@ -52,11 +55,30 @@ SKILL_MAP = {
     "script-generation": "xhs-script-generation",
     "topic-selection": "xhs-topic-selection",
     "comment-intelligence": "xhs-comment-intelligence",
+    "lufei-ops": "lufei-ops-orchestrator",
+    "lufei-orchestrator": "lufei-ops-orchestrator",
+    "lufei-larry": "lufei-data-intake",
+    "lufei-data": "lufei-data-intake",
+    "lufei-reed": "lufei-content-studio",
+    "lufei-content": "lufei-content-studio",
+    "lufei-service": "lufei-service-diagnosis",
+    "lufei-diagnosis": "lufei-service-diagnosis",
+    "lufei-cs": "lufei-member-cs",
+    "lufei-member-cs": "lufei-member-cs",
+    "lufei-qa": "lufei-quality-gate",
+    "lufei-quality": "lufei-quality-gate",
+    "lufei-integration": "lufei-system-integration",
     # 完整名也支持直接传
     "xhs-viral-analysis": "xhs-viral-analysis",
     "xhs-script-generation": "xhs-script-generation",
     "xhs-topic-selection": "xhs-topic-selection",
     "xhs-comment-intelligence": "xhs-comment-intelligence",
+    "lufei-ops-orchestrator": "lufei-ops-orchestrator",
+    "lufei-data-intake": "lufei-data-intake",
+    "lufei-content-studio": "lufei-content-studio",
+    "lufei-service-diagnosis": "lufei-service-diagnosis",
+    "lufei-quality-gate": "lufei-quality-gate",
+    "lufei-system-integration": "lufei-system-integration",
 }
 
 

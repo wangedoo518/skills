@@ -1,6 +1,25 @@
-# 小红书爆款内容生产链路 (xhs-content-pipeline)
+# 路飞知识水电站 Skills (xhs-content-pipeline)
 
-针对设计师职业发展 + 大厂求职垂类调优的 AI 辅助内容生产工具链。
+针对「路飞设计沉思录」设计师职业发展 + 大厂求职垂类调优的 AI 运营 skills 层。
+
+当前仓库不再只是单条小红书内容生产工具，而是路飞知识水电站的提示词与 skill 协议层：
+
+```text
+路飞个人微信 DM
+  → Elon Mask / lufei-ceo
+  → Hermes Kanban Engine
+  → Larry / Reed / Jobs / Altman / Satya / Bezos
+  → lufei-xhs-wiki / Obsidian
+```
+
+未来客户侧入口：
+
+```text
+客户微信客服入口
+  → Bezos / lufei-bezos
+  → 线索收集 / 初步答疑 / CRM 入库
+  → Hermes Kanban / lufei-xhs-wiki
+```
 
 ## 当前状态
 
@@ -10,10 +29,17 @@
 | **生成 SKILL** (`xhs-script-generation` v0.2.0) | ✅ 已落地，视频/图文双骨架 + 互动设计标注版逐字稿 + 评论区设计 + 12 条反爆款保护 |
 | **选题 SKILL** (`xhs-topic-selection` v0.2.0) | ✅ 已落地，50 个候选 → Top 5 + 五维评分（匹配/痛点/收藏/评论/执行） |
 | **评论情报 SKILL** (`xhs-comment-intelligence` v0.1) | ✅ 已落地，评论需求/店铺/关键词/争议/转化线索分析 |
+| **路飞内部运营编排** (`lufei-ops-orchestrator` v0.1) | ✅ 已落地，微信/Chat 意图 → Kanban 卡片 → worker 分派 |
+| **路飞资料提取** (`lufei-data-intake` v0.1) | ✅ 已落地，小红书/腾讯会议/有道/课程/咨询 raw 入库协议 |
+| **路飞内容工作室** (`lufei-content-studio` v0.1) | ✅ 已落地，集成爆款拆解 → 选题 → 逐字稿 |
+| **路飞服务诊断** (`lufei-service-diagnosis` v0.1) | ✅ 已落地，简历/作品集/面试复盘/课程咨询流程设计 |
+| **路飞客户客服/CRM** (`lufei-member-cs` v0.1) | ✅ 已落地，客户意图分类、首轮回复、CRM 字段 |
+| **路飞质量门** (`lufei-quality-gate` v0.1) | ✅ 已落地，引用/幻觉/人设/交付边界检查 |
+| **路飞系统集成** (`lufei-system-integration` v0.1) | ✅ 已落地，Hermes/微信/Kanban/Obsidian 联调与故障定位 |
 | **`run_skill.py` 调用脚本** | ✅ 已落地，接 FreeModel API |
 | **`whisper_transcribe.py` 转写脚本** | ✅ 已落地，本地 faster-whisper |
 | **`huitun_collect.py` 灰豚采集脚本** | 🟡 骨架已落地（login + explore + search 三命令），search 的 selector 待 explore 阶段填实 |
-| **Hermes Plugin 集成** | ⏸ 待 Phase 4 |
+| **Hermes Plugin 集成** | ✅ 已有 `plugin.yaml` + `__init__.py`，skills 层主要负责 prompt/协议 |
 | **复盘 SKILL** | ⏸ 待 Phase 6（需要发布后真实数据） |
 
 ## 目录结构
@@ -32,12 +58,19 @@ xhs-content-pipeline/
 │   ├── xhs-viral-analysis/SKILL.md       ← 拆解 v0.3.0
 │   ├── xhs-script-generation/SKILL.md    ← 生成 v0.2.0
 │   ├── xhs-topic-selection/SKILL.md      ← 选题 v0.2.0
-│   └── xhs-comment-intelligence/SKILL.md ← 评论情报 v0.1
-├── plugin.yaml                            ← (Phase 4 待建) Hermes 插件清单
-└── tools/                                 ← (Phase 4-5 待建)
-    ├── transcribe.py                      ← Whisper 转写
-    ├── analyze.py                         ← analyze SKILL 调用 wrapper
-    └── generate.py                        ← 多模型并行生成
+│   ├── xhs-comment-intelligence/SKILL.md ← 评论情报 v0.1
+│   ├── lufei-ops-orchestrator/SKILL.md   ← Elon Mask / Kanban 编排
+│   ├── lufei-data-intake/SKILL.md        ← Larry Page / 资料提取
+│   ├── lufei-content-studio/SKILL.md     ← Reed Hastings / 内容工作室
+│   ├── lufei-service-diagnosis/SKILL.md  ← Steve Jobs / 服务诊断
+│   ├── lufei-member-cs/SKILL.md          ← Bezos / 客服 CRM
+│   ├── lufei-quality-gate/SKILL.md       ← Sam Altman / 质量门
+│   └── lufei-system-integration/SKILL.md ← Satya Nadella / 系统集成
+├── docs/
+│   └── 2026-05-24-lufei-knowledge-hydropower-implementation.md
+├── tests/
+│   └── static_skill_check.py
+└── plugin.yaml                            ← Hermes 插件清单
 ```
 
 ## 快速开始
@@ -94,6 +127,36 @@ python run_skill.py comment-intelligence -i /tmp/comments_input.md -o /tmp/comme
 python run_skill.py script-generation -i /tmp/vol14_input.md -o /tmp/vol14稿.md
 ```
 
+#### 路飞内部运营编排
+
+```bash
+python run_skill.py lufei-ops -i /tmp/weixin_dm.md -o /tmp/kanban_cards.md
+```
+
+#### 客户客服 / CRM 入库
+
+```bash
+python run_skill.py lufei-cs -i /tmp/customer_message.md -o /tmp/crm_intake.md
+```
+
+#### 简历 / 作品集 / 面试复盘诊断
+
+```bash
+python run_skill.py lufei-service -i /tmp/student_case.md -o /tmp/service_diagnosis.md
+```
+
+#### 质量门检查
+
+```bash
+python run_skill.py lufei-qa -i /tmp/artifact.md -o /tmp/quality_gate.md
+```
+
+#### 系统集成检查
+
+```bash
+python run_skill.py lufei-integration -i /tmp/system_issue.md -o /tmp/runbook.md
+```
+
 ### 4. 查看 token 用量
 
 加 `--show-usage` 显示 token 消耗：
@@ -136,7 +199,19 @@ python whisper_transcribe.py video.mp4 -o transcript.txt
 python run_skill.py viral-analysis -i transcript.txt -o report.md
 ```
 
-## 三个 SKILL 之间的协作（Agent-first 视角）
+## 路飞知识水电站角色分工
+
+| 角色 | Skill / 能力 | 说明 |
+|---|---|---|
+| Elon Mask / `lufei-ceo` | `lufei-ops-orchestrator` | 路飞个人微信 DM 入口，拆任务，写 Kanban 验收 |
+| Larry Page / `lufei-larry` | `lufei-data-intake` + Hermes 小红书/腾讯会议/有道工具 | 资料提取与 raw 入库 |
+| Reed Hastings / `lufei-reed` | `lufei-content-studio` + 四个 xhs skills | 爆款拆解、选题、逐字稿、评论情报 |
+| Steve Jobs / `lufei-jobs` | `lufei-service-diagnosis` | 简历、作品集、面试复盘、课程咨询流程 |
+| Sam Altman / `lufei-altman` | `lufei-quality-gate` | 引用、反幻觉、人设、交付边界 |
+| Satya Nadella / `lufei-satya` | `lufei-system-integration` | Hermes/微信/Kanban/Obsidian 联调 |
+| Bezos / `lufei-bezos` | `lufei-member-cs` | 未来客户微信客服入口、CRM、转化线索 |
+
+## 小红书内容 SKILL 协作（Agent-first 视角）
 
 按 ADR-015，工作流不是 pipeline 而是 agent 自主决策：
 
@@ -175,6 +250,27 @@ Goal: 给路飞下条爆款逐字稿
 - [ ] 不会美化低质量样本（低质量给低分）
 - [ ] 严格 cite 原文（不会臆测）
 - [ ] 路飞场景的反爆款信号（"X 次觉醒"、"宝宝姐妹"等）能被识别为反例
+
+## 本仓库静态自测
+
+```bash
+cd /Users/champion/Documents/develop/skills
+python xhs-content-pipeline/tests/static_skill_check.py
+python -m py_compile xhs-content-pipeline/run_skill.py xhs-content-pipeline/tests/static_skill_check.py
+```
+
+## 路飞知识水电站测试输入
+
+测试 fixture 位于 `xhs-content-pipeline/tests/fixtures/`：
+
+| 文件 | 用途 | 推荐命令 |
+|---|---|---|
+| `lufei_ops_input.md` | Elon Mask 内部运营编排 | `python xhs-content-pipeline/run_skill.py lufei-ops -i xhs-content-pipeline/tests/fixtures/lufei_ops_input.md` |
+| `lufei_content_studio_input.md` | Reed 内容生产包 | `python xhs-content-pipeline/run_skill.py lufei-content -i xhs-content-pipeline/tests/fixtures/lufei_content_studio_input.md` |
+| `lufei_member_cs_input.md` | Bezos 客服/CRM | `python xhs-content-pipeline/run_skill.py lufei-cs -i xhs-content-pipeline/tests/fixtures/lufei_member_cs_input.md` |
+| `lufei_service_diagnosis_input.md` | Steve Jobs 服务诊断 | `python xhs-content-pipeline/run_skill.py lufei-service -i xhs-content-pipeline/tests/fixtures/lufei_service_diagnosis_input.md` |
+| `lufei_quality_gate_input.md` | Sam Altman 质量门 | `python xhs-content-pipeline/run_skill.py lufei-qa -i xhs-content-pipeline/tests/fixtures/lufei_quality_gate_input.md` |
+| `lufei_system_integration_input.md` | Satya 系统集成 | `python xhs-content-pipeline/run_skill.py lufei-integration -i xhs-content-pipeline/tests/fixtures/lufei_system_integration_input.md` |
 
 ## SKILL 迭代优先级（按改动收益从高到低）
 
