@@ -6,9 +6,10 @@
 
 | 模块 | 状态 |
 |------|------|
-| **拆解 SKILL** (`xhs-viral-analysis` v0.2) | ✅ 已落地，五维框架（钩子/框架/爆点/情绪/阈值） |
-| **生成 SKILL** (`xhs-script-generation` v0.1) | ✅ 已落地，视频/图文双骨架 + 8 条反爆款保护 |
-| **选题 SKILL** (`xhs-topic-selection` v0.1) | ✅ 已落地，三维评分推荐 |
+| **拆解 SKILL** (`xhs-viral-analysis` v0.3.0) | ✅ 已落地，十维框架（钩子/框架/爆点/情绪/阈值/评论资产/互动动机/留存完播/下一条选题/script_brief） |
+| **生成 SKILL** (`xhs-script-generation` v0.2.0) | ✅ 已落地，视频/图文双骨架 + 互动设计标注版逐字稿 + 评论区设计 + 12 条反爆款保护 |
+| **选题 SKILL** (`xhs-topic-selection` v0.2.0) | ✅ 已落地，50 个候选 → Top 5 + 五维评分（匹配/痛点/收藏/评论/执行） |
+| **评论情报 SKILL** (`xhs-comment-intelligence` v0.1) | ✅ 已落地，评论需求/店铺/关键词/争议/转化线索分析 |
 | **`run_skill.py` 调用脚本** | ✅ 已落地，接 FreeModel API |
 | **`whisper_transcribe.py` 转写脚本** | ✅ 已落地，本地 faster-whisper |
 | **`huitun_collect.py` 灰豚采集脚本** | 🟡 骨架已落地（login + explore + search 三命令），search 的 selector 待 explore 阶段填实 |
@@ -28,9 +29,10 @@ xhs-content-pipeline/
 ├── huitun_collect.py                      ← 🟡 CLI: 灰豚 Playwright 采集（骨架就绪，selector 待 explore）
 ├── requirements-collect.txt               ← ✅ 采集脚本的可选依赖（playwright）
 ├── skills/
-│   ├── xhs-viral-analysis/SKILL.md       ← 拆解 v0.2
-│   ├── xhs-script-generation/SKILL.md    ← 生成 v0.1
-│   └── xhs-topic-selection/SKILL.md      ← 选题 v0.1
+│   ├── xhs-viral-analysis/SKILL.md       ← 拆解 v0.3.0
+│   ├── xhs-script-generation/SKILL.md    ← 生成 v0.2.0
+│   ├── xhs-topic-selection/SKILL.md      ← 选题 v0.2.0
+│   └── xhs-comment-intelligence/SKILL.md ← 评论情报 v0.1
 ├── plugin.yaml                            ← (Phase 4 待建) Hermes 插件清单
 └── tools/                                 ← (Phase 4-5 待建)
     ├── transcribe.py                      ← Whisper 转写
@@ -77,6 +79,13 @@ python run_skill.py viral-analysis -i /tmp/transcript.txt -o /tmp/report.md
 ```bash
 # 输入: 博主画像 + 拆解报告
 python run_skill.py topic-selection -i /tmp/路飞_input.md -o /tmp/选题.md
+```
+
+#### 评论区情报分析
+
+```bash
+# 输入: note.md / note.json 摘要 / 评论截图 OCR / 评论列表
+python run_skill.py comment-intelligence -i /tmp/comments_input.md -o /tmp/comment_report.md
 ```
 
 #### 生成逐字稿
@@ -136,11 +145,12 @@ Goal: 给路飞下条爆款逐字稿
       ↓
   Agent 自主决策：
       ↓
-  1. 调 topic-selection 出 3-5 候选 → 用户/路飞选一个
-  2. 调 viral-analysis 拆参考爆款（如果上下文还没有）
-  3. 调 script-generation 写稿
-  4. 调 viral-analysis 自评刚生成的稿
-  5. 如果自评 < 7 分，回到第 3 步迭代
+  1. 调 viral-analysis 拆参考爆款，默认输出互动动机、留存完播、下一条选题和 script_brief
+  2. 调 topic-selection 把 next_topic_seeds 扩展为 50 个候选 → 筛 Top 5 → 用户/路飞选一个
+  3. 调 comment-intelligence 深挖评论需求/关键词（如果有评论或评论截图）
+  4. 调 script-generation 写稿，同时生成互动设计标注版逐字稿和评论触发设计
+  5. 调 viral-analysis 自评刚生成的稿
+  6. 如果自评 < 7 分，回到第 4 步迭代
 ```
 
 当前 `run_skill.py` 是 Phase 4 之前的"单次调用"接口。Phase 4 接 Hermes 后，agent 会自动完成上面的决策。

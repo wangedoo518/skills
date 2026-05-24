@@ -184,7 +184,7 @@ Phase B: 知识库增强 (未来扩展，§11)
 │  能力池 (Skills + Tools + Knowledge)                                  │
 │                                                                       │
 │  Skills (Agent 看的领域知识 / 决策框架):                                │
-│    选题 ✅ │ 拆解 ✅ (v0.3.2 严格反胡编) │ 生成 ✅ │ 复盘(待建)         │
+│    选题 ✅ │ 拆解 ✅ (v0.3.2 严格反胡编) │ 生成 ✅ │ 评论情报 ✅ │ 复盘(待建) │
 │                                                                       │
 │  Tools (Agent 能调的执行能力):                                          │
 │    whisper_transcribe │ analyze │ generate │ review │                 │
@@ -222,6 +222,7 @@ Phase B: 知识库增强 (未来扩展，§11)
 | **vol.14 路飞首稿**（端到端可交付产物，本地 `reports/` 不入库）| `./xhs-content-pipeline/reports/cli-replay-05-script-generation-*.md` | ✅ 基于真实竞品「郑01 HTML 可交互简历」5min 视频转写 + viral-analysis 完整 10 评分点拆解 + topic-selection 9.6/10 候选 → 生成 vol.14 字节作品集深挖面试逐字稿；预期 CES 7336（比 vol.13 v0.1 +21%）；含 18 个高级别追问 + CES 三件触发器（关注/评论/转发）+ 录制节奏 + 发布时段建议 |
 | **生成 SKILL v0.2** | `./xhs-content-pipeline/skills/xhs-script-generation/SKILL.md` | ✅ 引入 CES 三件触发器（关注转化 + 评论 prompt + 转发钩子）强制内置；路飞 vol.14 初稿 CTA 段已按 CES 三件重写；预期 CES 提升 21% |
 | **选题 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-topic-selection/SKILL.md` | ✅ 三维度评分（博主匹配 0.4 + 热度 0.4 + 可执行 0.2）+ 路飞 4 个已评分候选选题 + 反爆款选题信号 |
+| **评论情报 SKILL v0.1** | `./xhs-content-pipeline/skills/xhs-comment-intelligence/SKILL.md` | ✅ 评论需求/店铺/关键词/争议/转化线索分析，反哺选题与生成 |
 | **`run_skill.py` 调用脚本** | `./xhs-content-pipeline/run_skill.py` | ✅ 单次原子调用任意 SKILL，接 FreeModel API，不依赖 Hermes |
 | **`whisper_transcribe.py` 转写脚本** | `./xhs-content-pipeline/whisper_transcribe.py` | ✅ 本地 faster-whisper 音视频转写（plain/srt/json 输出），不依赖 Hermes 不依赖 API |
 | 依赖清单（核心） | `./xhs-content-pipeline/requirements.txt` | ✅ openai + python-dotenv |
@@ -340,6 +341,7 @@ Phase B: 知识库增强 (未来扩展，§11)
 | ADR-023 | **三通道差异**（CLI / Weixin / Dashboard chat）| 2026-05-23 | (1) **CLI** `hermes -z` —— production-ready, 端到端 2 分 15 秒跑完整 5 步链路。(2) **Weixin gateway** —— agent loop 正常，但 iLink outbound 有强 rate limit（`errcode=-2 rate limited`），长 response 分块发送容易触发，10 次 retry 后 fallback also fails；缓解：`.env` 加 `WEIXIN_SEND_CHUNK_DELAY_SECONDS=3.5` + `WEIXIN_SEND_CHUNK_RETRIES=2`（需重启 gateway 生效）。session 仍 2-3 小时过期。(3) **Dashboard chat (port 9119)** —— `hermes dashboard --tui` 在 **Windows 原生 Python 不可用**（要 POSIX PTY），报错 `Chat unavailable: the embedded terminal requires a POSIX PTY`。要用 dashboard chat 必须在 WSL2 / Linux 装 hermes。dashboard 其他菜单（Sessions / Logs / Plugins / Skills）在 Windows 正常 |
 | ADR-024 | **huitun plugin 必须用 `raw_xhs_url` 字段而非 `url`**（小红书 300031 登录墙）| 2026-05-23 | huitun_collect.py 输出含两个 URL 字段：`url` 是 `explore/<id>` 不带 token（小红书登录态访问也会被 300031 拒）+ `raw_xhs_url` 是 `discovery/item/<id>?xsec_token=...&xsec_source=pc_feed` 带完整 xsec 验签。xhs-pipeline plugin 的 `_summarize_for_agent` 改成 `n.get("raw_xhs_url") or n.get("url")` 优先级。修复前 5/5 笔记 404，修复后能正常进入 viral-analysis；2/3 命中率（剩 1/3 仍 404 是笔记本身已删 / 受限）|
 | ADR-025 | **weixin platform 必须显式声明 `xhs` toolset，否则 agent 看不到 plugin tools** | 2026-05-23 | hermes 的 `config.yaml > platform_toolsets` 给每个消息平台限定可见 toolset；默认配置里 `weixin` **完全缺失**条目（cli / telegram / discord / whatsapp / slack 都列了，weixin 没列），导致 weixin gateway 跑 agent 时只看到 default toolset 内的 tool —— 没有 huitun_search / xhs_extract_note / 3 个 xhs SKILL。表现：agent 调 search_files / write_file / browser_navigate 假装在工作 produce ~1250 字短回复，0 次 plugin 真实调用，5 步报告也不会落盘。修法：在 `~/.hermes/config.yaml > platform_toolsets` 加 `weixin: [hermes-cli, xhs]`（hermes-cli 给基础 read_file/write_file/web_search/SKILL，xhs 给我们 plugin 的 3 + 1 个 tool）。改完必须重启 gateway。**端到端 v4 验证通过**：agent 真调 huitun + xhs_extract_note + 3 SKILL + 5 报告落盘 + 微信送达 + 自主做了"4 版对比总览" |
+| ADR-026 | **评论区作为内容资产进入链路** | 2026-05-21 | 评论不是单纯互动指标，而是用户需求池、店铺/品牌词典、搜索关键词池、争议点和下一条选题来源。新增 `xhs-comment-intelligence`，并让生成/选题阶段读取评论资产 |
 
 ---
 
@@ -361,8 +363,9 @@ D:\Users\111\Desktop\Project\爱马仕\
     ├── skills\
     │   ├── xhs-viral-analysis\
     │   │   └── SKILL.md              ← ✅ 拆解 SKILL v1
-    │   ├── xhs-topic-selection\      ← (待建)
-    │   ├── xhs-script-generation\    ← (待建)
+    │   ├── xhs-topic-selection\      ← ✅ 选题 SKILL v1
+    │   ├── xhs-script-generation\    ← ✅ 生成 SKILL v2
+    │   ├── xhs-comment-intelligence\ ← ✅ 评论情报 SKILL v1
     │   └── xhs-performance-review\   ← (待建)
     ├── tools\                         ← (待建)
     │   ├── transcribe.py

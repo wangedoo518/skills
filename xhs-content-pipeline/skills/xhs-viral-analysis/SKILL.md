@@ -1,6 +1,6 @@
 ---
 name: xhs-viral-analysis
-description: "拆解小红书爆款笔记（视频/图文），输出钩子/框架/爆点/情绪曲线/CES 五维分析。v0.3 引入小红书 CES 算法权重视角（关注 8 / 评论 4 / 转发 4 / 点赞 1 / 收藏 1）+ 2 小时窗口规则；并支持 xhs_extract_note 生成的 note.md / image_ocr_by_page 输入；针对设计师职业发展+大厂求职垂类调优。"
+description: "拆解小红书爆款笔记（视频/图文），输出钩子/框架/爆点/情绪曲线/CES/评论资产/互动动机/留存完播/下一条选题/script_brief。v0.3.2 保留严格反胡编模式；支持 xhs_extract_note 生成的 note.md、note.json、transcript.md、image_ocr_by_page、comment_threads 输入；针对设计师职业发展+大厂求职垂类调优。"
 version: 0.3.0
 author: user
 license: MIT
@@ -8,8 +8,9 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [xiaohongshu, content-analysis, viral, video, script-writing, design-career, ces-algorithm]
-    related_skills: [xhs-script-generation]
+    related_skills: [xhs-script-generation, xhs-topic-selection, xhs-comment-intelligence]
     changelog:
+      v0.3.3: "合并评论资产与十维拆解入口：支持 note.json/comment_threads/transcript.md 侧车文件，默认输出点赞/收藏/评论动机、留存完播、下一条选题建议和 script_brief；保持 v0.3.2 严格反胡编模式。"
       v0.3.2: "严格反胡编模式：撤销 v0.3.1 的'基于标题推断钩子六维评分'路径。huitun 元数据模式降级为'硬数据模式'，只输出 CES + 互动诊断（数学计算），严禁基于标题推断钩子/框架/爆点/情绪曲线（必须有真实正文/视频转写）。agent 在缺正文时必须主动建议调 xhs_extract_note 或 whisper_transcribe 补充输入。修复 CLAUDE.md §8.1「必须 cite 原文」违反。"
       v0.3.1: "huitun 元数据模式：新增笔记404时基于 huitun 元数据的备选分析路径（标题+互动数据推断），补充输入契约的元数据模式表格，增加行为约束第15条 — v0.3.2 已撤销该模式的推断分析部分"
       v0.3.0: "引入小红书 CES 算法权重（CES = 点赞×1 + 收藏×1 + 评论×4 + 转发×4 + 关注×8）。第一维加'关注转化暗示'第 6 维评分；第三维加'主驱动互动类型'标注；第五维加 CES 计算 + 2 小时窗口规则 + CES 阈值；反爆款信号加 3 条（无关注转化设计 / 无评论 prompt / 无转发钩子）；路飞配方加 CES 优化建议"
@@ -59,12 +60,20 @@ metadata:
 - `transcript`: 逐字稿全文（纯文本，不带时间戳）；或
 - `note_markdown`: `xhs_extract_note` 生成的 `note.md` 全文，适用于图文笔记
 
+**xhs_extract_note 视频笔记的侧车文件规则**：
+- 当用户给的是 `raw/xhs/notes/<note_id>/note.md` 路径时，不要只读 `note.md`。视频笔记的真正可拆解内容通常在同目录的 `transcript.md`。
+- 同目录 `note.json` 通常包含 `raw_metadata.meta` 里的 `og:type`、`og:videotime`、`og:xhs:note_like`、`og:xhs:note_collect`、`og:xhs:note_comment`、`description`、`keywords`、`og:video` 等，必须优先用它校准 note_type、时长、互动数据和赛道关键词。
+- 推荐读取顺序：`note.md` → 同目录 `note.json` → 同目录 `transcript.md`。若 `transcript.md` 存在且 `status: ok`，用 transcript 做主分析文本；`note.md` 只作为标题/正文/OCR/素材状态证据。
+- 评论正文只有在 `note.json`/`note.md` 明确含 `comment_threads` 或评论样本时才能引用；如果只有评论数，必须写“无评论正文，不能编造评论内容”，但可以基于正文结构分析应设计的评论触发点。
+
 **可选**（有就用、没有就推断）：
 - `image_ocr_by_page`: 图文笔记逐图 OCR 文案。推荐格式为 `{image_index, ocr_text, local_path}` 列表；如果已经包含在 `note_markdown` 的 `## Image OCR` 章节中，可不单独传
 - `duration_seconds`: 视频总时长（用于估算每段秒数）
 - `likes` / `collects` / `comments`: 互动数据（用于校准爆款等级）
 - `shares` / `follows_gained`: 转发数 / 新增关注数（v0.3 新增，**对 CES 算分至关重要**）
 - `hours_since_publish`: 发布距今小时数（v0.3 新增，用于 2 小时窗口规则判定）
+- `comment_threads`: `xhs_extract_note` 生成的评论样本，读取 `status/source/items`；如果 `status=ok`，用真实评论做评论资产判断；如果只有数量没有正文，不能编造评论内容
+- `comment_screenshots_ocr`: 评论截图 OCR 文本，可交给 `xhs-comment-intelligence` 进一步深挖
 - `niche`: 赛道（穿搭/美食/职场/母婴/美妆/家居/...）
 - `creator_persona`: 博主人设（用于识别不可复刻部分）
 
@@ -94,7 +103,7 @@ metadata:
 
 > **v0.3 数据获取提示**：转发和关注数在小红书原生界面不直接显示，但关注数变化可以通过博主后台或粉丝量对比估算。如果用户拿不到这两项数据，必须在报告里明确标注"CES 估算值，因转发/关注数缺失，仅按下限计算"，不要静默忽略。
 
-## 分析框架（五维 + CES 算法权重视角）
+## 分析框架（五维 + CES 算法权重视角 + 十维输出）
 
 v0.2 升级到五维：在 v0.1 的钩子/框架/爆点/情绪曲线 四维之上，加入"爆款量化阈值"维度作为输出校验。
 
@@ -105,6 +114,20 @@ v0.3 引入 **CES 算法权重视角**贯穿全部五维：
 - 这意味着分析时要看的不只是"互动量"，而是"高分项互动量" —— 一条 100 关注 + 50 评论 + 200 点赞的笔记（CES = 100×8 + 50×4 + 200×1 = 1200），CES 比 5000 点赞的笔记（CES = 5000×1 = 5000，但都是低分项）质量更高（每次互动平均贡献分高）
 
 详见 §第五维。
+
+v0.3.3 输出层默认扩展为十维，但前五维仍是核心证据链：
+1. 前 15 秒钩子
+2. 整体框架
+3. 爆点定位
+4. 情绪曲线
+5. 互动阈值 / CES
+6. 评论资产判断
+7. 点赞动机
+8. 收藏动机
+9. 留存与完播设计
+10. 下一条选题建议 + `script_brief`
+
+注意：第 6-10 维必须基于真实正文、转写、OCR 或评论样本；没有来源时只能写“缺数据”，不能补小说明。
 
 ### 第一维：前 15 秒钩子拆解
 
@@ -364,14 +387,52 @@ CES = 点赞×1 + 收藏×1 + 评论×4 + 转发×4 + 关注×8
 - [ ] **金句模板 2**：`{模板}`
 - [ ] **情绪节奏**：开头 +8 → 中段稳定 +5-7 → 60-70%处冲 +9 → 平稳收尾 +5
 
-## 六、风险/不可复刻部分
+## 六、评论资产判断
+
+- **评论状态**：{ok / requires_login / lazy_unloaded / none}
+- **真实评论需求聚类**：{如有 comment_threads/items，按求资料、补充经验、质疑、求推荐、转化意向聚类；没有评论正文则写缺数据}
+- **评论区可沉淀资产**：{关键词、店铺/品牌、题库、用户问题、下一条选题线索}
+- **建议交给 xhs-comment-intelligence 的材料**：{评论样本 / 截图 OCR / comment_threads 路径}
+
+## 七、互动动机拆解
+
+- **为什么会点赞**：{具体原文或画面触发点，不要写泛泛而谈}
+- **为什么会收藏**：{哪一段/哪张图形成工具价值}
+- **为什么会评论**：{信息缺口、争议点、求资料入口或作者追问}
+- **为什么会完播**：{开头悬念、中段密度、80% 爆点、结尾 CTA}
+
+## 八、下一条选题建议
+
+给出 3-5 个可延展方向，每个方向必须说明：
+- 选题：{标题方向}
+- 为什么会火：{继承了本条哪一个爆点/互动动机}
+- 适合格式：{视频/图文/直播切片}
+- 风险：{容易像 AI / 太抽象 / 需要素材}
+
+## 九、script_brief（给 xhs-script-generation）
+
+```yaml
+recommended_framework: "{A/B/C}"
+opening_strategy: "..."
+mid_content_strategy: "..."
+like_trigger: "..."
+collect_trigger: "..."
+comment_trigger: "..."
+cta_asset: "..."
+must_keep:
+  - "..."
+avoid:
+  - "..."
+```
+
+## 十、风险/不可复刻部分
 
 - **博主人设带来的**：{比如博主有特殊身份/履历，新人模仿会失真}
 - **选题红利**：{比如蹭了某个热点/某个目标公司是大家最关心的}
 - **画面/音乐红利**：{逐字稿看不出来但可能贡献了爆款的部分}
 - **系列复利效应** 🆕：{是否是系列的第 N 条（如 vol.13），前 N-1 条积累的订阅心智？单独复刻系列里某一条不一定能爆}
 
-## 七、综合评级
+## 十一、综合评级
 
 - 钩子：x/10
 - 结构：x/10
@@ -383,7 +444,7 @@ CES = 点赞×1 + 收藏×1 + 评论×4 + 转发×4 + 关注×8
 - **复刻难度**：低/中/高
 - **建议**：{这条爆款值不值得复刻、复刻时重点抓什么 + 如何优化 CES weak link}
 
-## 八、🆕 CES 优化建议（v0.3，针对博主下一条内容）
+## 十二、🆕 CES 优化建议（v0.3，针对博主下一条内容）
 
 基于本条的 CES 贡献结构，给出**下一条要做的具体动作**：
 

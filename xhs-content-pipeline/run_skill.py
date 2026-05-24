@@ -15,6 +15,9 @@ run_skill.py —— 用 FreeModel API 调用任意 SKILL
     # 生成逐字稿
     python run_skill.py script-generation -i ./inputs/vol14_input.json -o ./outputs/vol14.md
 
+    # 深挖评论区
+    python run_skill.py comment-intelligence -i ./inputs/comments.md -o ./outputs/comment_report.md
+
     # 从 stdin 读取
     cat transcript.txt | python run_skill.py viral-analysis
 
@@ -48,10 +51,12 @@ SKILL_MAP = {
     "viral-analysis": "xhs-viral-analysis",
     "script-generation": "xhs-script-generation",
     "topic-selection": "xhs-topic-selection",
+    "comment-intelligence": "xhs-comment-intelligence",
     # 完整名也支持直接传
     "xhs-viral-analysis": "xhs-viral-analysis",
     "xhs-script-generation": "xhs-script-generation",
     "xhs-topic-selection": "xhs-topic-selection",
+    "xhs-comment-intelligence": "xhs-comment-intelligence",
 }
 
 
