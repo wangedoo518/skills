@@ -1,4 +1,6 @@
-# 路飞知识水电站 Skills (xhs-content-pipeline)
+# 路飞知识水电站 Legacy 工具仓 (xhs-content-pipeline)
+
+> **Legacy notice (2026-05-25)**: 本仓库当前只保留历史 CLI、灰豚采集脚本、转写脚本和旧版参考材料。Hermes 运行时的唯一 Skill Pack 入口已经迁移到 `/Users/champion/Documents/develop/hermes-skills`，并通过 `~/.hermes/config.yaml` 的 `skills.external_dirs` 加载。不要再把本仓 `skills/` 配进 Hermes，否则会重新造成 `xhs-viral-analysis` 等 Skill 重复和路由歧义。
 
 针对「路飞设计沉思录」设计师职业发展 + 大厂求职垂类调优的 AI 运营 skills 层。
 
